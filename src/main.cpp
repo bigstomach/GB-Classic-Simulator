@@ -1,26 +1,116 @@
 #include <iostream>
-#include <SFML/Graphics.hpp>
 #include <string>
 
 #include "cpu.h"
 #include "mem.h"
 #include "gpu.h"
 
-Cpu cpu;
-Mem mem;
+extern Cpu cpu;
+extern Mem mem;
+extern Gpu gpu;
 
 void execute()
 {
     cpu.init();
-    while(1)
+    gpu.init();
+    while(gpu.window.isOpen())
     {
         unsign_8 op=mem.rb(cpu.reg_pc);
         if (op==0xCB) {cpu.reg_pc++; op=mem.rb(cpu.reg_pc); cpu.cb_opcode[op]();}
         else cpu.opcode[op]();
         cpu.reg_pc++;
         cpu.clocktime+=cpu.time;
-        std::cout<<cpu.clocktime<<std::endl;
-     //   gpu_timing();
+        unsign_8 interrupt_enable=mmu.rb(0xffff),interrupt_flags=mmu.rb(0xff0f);
+        if(cpu.master_enabled&&interrupt_enable&&interrupt_flags)
+        {
+            unsign_8 vblank=interrupt_enable&interrupt_flags;
+            if(vblank&1)
+            {
+                mmu.wb(0xff0f,interrupt_flags&254);
+                cpu.rst40();
+            }
+        }
+    cpu.clocktime+=cpu.time;
+}
+        mem.wb(0xff00,0x3f);
+        while (window.pollEvent(event))
+        {
+            if(event.type == sf::Event::Closed)
+                window.close();
+            if (event.type == sf::Event::KeyPressed)
+            {
+                if (event.key.code==sf::Keyboard::Right)
+                {
+                    mem.wb(0xff00,mem.rb(0xff00)&0xde);
+                }
+                if (event.key.code==sf::Keyboard::Left)
+                {
+                    mem.wb(0xff00,mem.rb(0xff00)&0xdd);
+                }
+                if (event.key.code==sf::Keyboard::Up)
+                {
+                    mem.wb(0xff00,mem.rb(0xff00)&0xdb);
+                }
+                if (event.key.code==sf::Keyboard::Down)
+                {
+                    mem.wb(0xff00,mem.rb(0xff00)&0xd7);
+                }
+                if (event.key.code==sf::Keyboard::Z)
+                {
+                    mem.wb(0xff00,mem.rb(0xff00)&0xee);
+                }
+                if (event.key.code==sf::Keyboard::X)
+                {
+                    mem.wb(0xff00,mem.rb(0xff00)&0xed);
+                }
+                if (event.key.code==sf::Keyboard::Space)
+                {
+                    mem.wb(0xff00,mem.rb(0xff00)&0xeb);
+                }
+                if (event.key.code==sf::Keyboard::Enter)
+                {
+                    mem.wb(0xff00,mem.rb(0xff00)&0xe7);
+                }
+
+            }
+            if (event.type == sf::Event::KeyReleased)
+            {
+                if (event.key.code==sf::Keyboard::Right)
+                {
+                    mem.wb(0xff00,mem.rb(0xff00)|0x21);
+                }
+                if (event.key.code==sf::Keyboard::Left)
+                {
+                    mem.wb(0xff00,mem.rb(0xff00)|0x22);
+                }
+                if (event.key.code==sf::Keyboard::Up)
+                {
+                    mem.wb(0xff00,mem.rb(0xff00)|0x24);
+                }
+                if (event.key.code==sf::Keyboard::Down)
+                {
+                    mem.wb(0xff00,mem.rb(0xff00)|0x28);
+                }
+                if (event.key.code==sf::Keyboard::Z)
+                {
+                    mem.wb(0xff00,mem.rb(0xff00)|0x21);
+                }
+                if (event.key.code==sf::Keyboard::X)
+                {
+                    mem.wb(0xff00,mem.rb(0xff00)|0x22);
+                }
+                if (event.key.code==sf::Keyboard::Space)
+                {
+                    mem.wb(0xff00,mem.rb(0xff00)|0x24);
+                }
+                if (event.key.code==sf::Keyboard::Enter)
+                {
+                    mem.wb(0xff00,mem.rb(0xff00)|0x28);
+                }
+
+            }
+        }
+        gpu_timing();
     }
 }
 

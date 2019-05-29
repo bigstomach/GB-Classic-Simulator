@@ -1,5 +1,7 @@
 #include "mem.h"
 
+Mem mem;
+
 unsign_8 Mem::rb(unsign_16 address)
 {
     return mmu[address];

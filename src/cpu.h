@@ -5,6 +5,8 @@
 typedef unsigned char unsign_8;
 typedef unsigned short unsign_16;
 
+extern Mem mem;
+
 class Cpu
 {
 public:
@@ -12,7 +14,7 @@ public:
     unsign_8 reg_a,reg_b,reg_c,reg_d,reg_e,reg_h,reg_l,reg_f;
     unsign_16 reg_sp,reg_pc;
     unsign_8 time;
-    bool halt,interrupts_enabled;
+    bool halt,master_enable;
     unsign_16 clocktime;
     std::function<void()> opcode[0xff],cb_opcode[0xff];    
 private:   

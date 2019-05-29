@@ -1,14 +1,23 @@
 #include "cpu.h"
 #include "mem.h"
 
-static Mem mem;
+Cpu cpu;
 
 void Cpu::reset()
 {
     reg_a=0; reg_b=0; reg_c=0; reg_d=0; reg_e=0; reg_f=0; reg_h=0; reg_l=0;
     reg_pc=0; reg_sp=0;
-    halt=0; interrupts_enabled=1;
+    halt=0; master_enable=1;
     clocktime=0;
+}
+
+void Cpu::rst40(&)
+{
+    master_enable=0;
+    reg_sp-=2;
+    mmu.ww(reg_sp,reg_pc);
+    reg_pc=0x0040;
+    time=12;
 }
 
 void Cpu::zero_flag(bool flag)
@@ -620,10 +629,10 @@ void Cpu::init()
     opcode[0x10]=[&]{halt=1; time=4;};
 
     //DI
-    opcode[0xf3]=[&]{interrupts_enabled=0; time=4;};
+    opcode[0xf3]=[&]{master_enable=0; time=4;};
 
     //EI
-    opcode[0xfb]=[&]{interrupts_enabled=1; time=4;};
+    opcode[0xfb]=[&]{master_enable=1; time=4;};
 
     //ROTATES & SHIFTS
     //RLCA
@@ -803,7 +812,7 @@ void Cpu::init()
     opcode[0xd8]=[&]{if (reg_f&16) ret();};
 
     //RETI
-    opcode[0xd9]=[&]{ret(); interrupts_enabled=1; time=8;};
+    opcode[0xd9]=[&]{ret(); master_enable=1; time=8;};
 }
 
 
