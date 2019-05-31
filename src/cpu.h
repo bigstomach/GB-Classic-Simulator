@@ -53,8 +53,7 @@ private:
     void rst(unsign_8 n);
     void ret();
     unsign_8 readhl();
-    void writehl(unsign_8 n);
-      
+    void writehl(unsign_8 n);  
 };
 
 

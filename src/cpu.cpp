@@ -2,6 +2,7 @@
 #include "mem.h"
 
 Cpu cpu;
+extern Mem mem;
 
 void Cpu::reset()
 {
@@ -15,7 +16,7 @@ void Cpu::rst40(&)
 {
     master_enable=0;
     reg_sp-=2;
-    mmu.ww(reg_sp,reg_pc);
+    mem.ww(reg_sp,reg_pc);
     reg_pc=0x0040;
     time=12;
 }
@@ -814,33 +815,3 @@ void Cpu::init()
     //RETI
     opcode[0xd9]=[&]{ret(); master_enable=1; time=8;};
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-    
-
-
-
-
-
-
-
-

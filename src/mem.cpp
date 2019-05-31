@@ -15,6 +15,7 @@ unsign_16 Mem::rw(unsign_16 address)
 void Mem::wb(unsign_16 address, unsign_8 n)
 {
     mmu[address]=n;
+    if (address==0xff40) mmu[address]=0;
 }
 
 void Mem::ww(unsign_16 address, unsign_16 n)

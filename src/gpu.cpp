@@ -3,6 +3,7 @@
 #include "gpu.h"
 
 Gpu gpu;
+extern Mem mem;
 
 void Gpu::init()
 {
@@ -135,23 +136,24 @@ void Gpu::renderscan()
         for(int i=0; i<40; i++)
         {
             unsign_16 pos=0xfe00+i*4;
-            unsign_8 sprite_y=mmu.rb(pos)-16;
-            unsign_8 sprite_x=mmu.rb(pos+1)-8;
-            unsign_8 sprite_tile=mmu.rb(pos+2);
-            unsign_8 sprite_options=mmu.rb(pos+3);    
+            unsign_8 sprite_y=mem.rb(pos)-16;
+            unsign_8 sprite_x=mem.rb(pos+1)-8;
+            unsign_8 sprite_tile=mem.rb(pos+2);
+            unsign_8 sprite_options=mem.rb(pos+3);    
             
             if (sprite_y<=gpu_line&&(sprite_y+8)>gpu_line)
             {
-                unsign_8 sprite_pal=(sprite_options&0x10)?mmu.rb(0xff49):mmu.rb(0xff48);
+                unsign_8 sprite_pal=(sprite_options&0x10)?mem.rb(0xff49):mem.rb(0xff48);
                 int x_flip=sprite_options&0x20;
                 int y_flip=sprite_options&0x40; 
+
                 int background_priority=sprite_options&0x80;
 
                 int tile_pos=0x8000+sprite_tile*0x10;
                 if (y_flip)
-                    fill=mmu.rb(tile_pos+7-(gpu.line-sprite_y));
+                    fill=mem.rb(tile_pos+7-(gpu.line-sprite_y));
                 else 
-                    fill=mmu.rb(tile_pos+(gpu_line-sprite_y));
+                    fill=mem.rb(tile_pos+(gpu_line-sprite_y));
                 for(int i=0;i<8; i++)
                 {
                     if (i+sprite_x>=0&&i+sprite_x<=160&&(fill&(1<<(7-i)))&&(!background_priority||!sanrow[sprite_x+i]))

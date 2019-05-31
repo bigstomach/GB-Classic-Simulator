@@ -8,6 +8,7 @@
 extern Cpu cpu;
 extern Mem mem;
 extern Gpu gpu;
+extern Timer timer;
 
 void execute()
 {
@@ -20,6 +21,10 @@ void execute()
         else cpu.opcode[op]();
         cpu.reg_pc++;
         cpu.clocktime+=cpu.time;
+        
+        timer.add();
+
+        cpu.time=0;
         unsign_8 interrupt_enable=mmu.rb(0xffff),interrupt_flags=mmu.rb(0xff0f);
         if(cpu.master_enabled&&interrupt_enable&&interrupt_flags)
         {
@@ -30,8 +35,10 @@ void execute()
                 cpu.rst40();
             }
         }
-    cpu.clocktime+=cpu.time;
-}
+        cpu.clocktime+=cpu.time;
+        
+        if (cpu.time) timer.add();
+        
         mem.wb(0xff00,0x3f);
         while (window.pollEvent(event))
         {
@@ -107,7 +114,6 @@ void execute()
                 {
                     mem.wb(0xff00,mem.rb(0xff00)|0x28);
                 }
-
             }
         }
         gpu_timing();
