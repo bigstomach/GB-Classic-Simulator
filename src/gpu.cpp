@@ -1,6 +1,8 @@
 #include "mem.h"
 #include "cpu.h"
 #include "gpu.h"
+#include "type.h"
+#include <iostream>
 
 Gpu gpu;
 extern Mem mem;
@@ -8,14 +10,18 @@ extern Mem mem;
 void Gpu::init()
 {
     tileSize=sf::Vector2u(ratio, ratio);
-    window=new window(sf::VideoMode(144*ratio,160*ratio), "test");
+    window.create(sf::VideoMode(160*ratio,144*ratio), "GB-Classic-Simulator");
+    window.display();
+    gpu_clock=0;
+    gpu_line=0;
+    gpu_mode=2;
 }
 
 //GPU frame timings
 void Gpu::timing()
 {
-    gpu_clock+=cpu.time;
-
+    gpu_clock+=cpu._time;
+    int a=gpu_clock,b=gpu_mode,c=gpu_line;
     switch (gpu_mode)
     {
         case 2:
@@ -36,7 +42,7 @@ void Gpu::timing()
             break;
 
         case 0:
-            if (gpu_mode>=204)
+            if (gpu_clock>=204)
             {
                 gpu_line++;
                 gpu_clock=0;
@@ -44,6 +50,8 @@ void Gpu::timing()
                 {
                     gpu_mode=1;
                     gpu_line=0;
+                    mem.wb(0xff0f,mem.rb(0xff0f)|1);
+                    window.clear(sf::Color::White); 
                     // GPU._canvas.putImageData(GPU._scrn, 0, 0); ???
                 }
                 else
@@ -71,7 +79,7 @@ void Gpu::timing()
     }
 }
 
-int cal_color(unsign_8 x)
+int Gpu::cal_color(unsign_8 x)
 {
     if (x==0)return 255;
     if (x==1)return 192;
@@ -82,9 +90,10 @@ int cal_color(unsign_8 x)
 void Gpu::renderscan()
 {
     lcd_and_gpu_control=mem.rb(0xff40);
+    int a=lcd_and_gpu_control;
     int background_on=lcd_and_gpu_control&1;
     int sprites_on=lcd_and_gpu_control&2;
-    unsign_8 scanrow[160];
+    unsign_8 scanrow[160]={0};
     if (background_on)
     {
         unsign_8 scroll_y=mem.rb(0xff42);
@@ -93,40 +102,45 @@ void Gpu::renderscan()
         unsign_8 palette=mem.rb(0xff47);
 
         unsign_16 mapoffset=(lcd_and_gpu_control&0x8)?0x9c00:0x9800;
-        mapoffset+=(gpu_line+scroll_y)>>3;
+        mapoffset+=gpu_line+scroll_y;
 
-        unsign_16 lineoffset=scroll_x>>3;
+        unsign_16 lineoffset=scroll_x;
 
         unsign_8 y=(gpu_line+scroll_y)&0x7;
         unsign_8 x=scroll_x&0x7;
 
-        unsign_8 tile_pos=((mapoffset+lineoffset)<<4)+0x8000;
-        int tx=0;
+        unsign_8 tile_set_numeber=(lcd_and_gpu_control&0x10)?1:0;
+        unsign_16 background_tile_set=tile_set_numeber?0x8000:0x9000;
+        unsign_8 tile_pos=mem.rb(mapoffset+lineoffset);
 
         //if ((lcd_and_gpu_control&0x10)&&tile<128)
         // TODO;
-
+        if (tile_set_numeber==0)
+            tile_pos=signed(tile_pos);
         for (int i=0;i<160;i++)
         {
-            unsign_8 now_color=(mem.rb(tile_pos+y*2)+mem.rb(tile_pos+y*2)<<1)&(1<<tx);
+            unsign_8 color1=mem.rb(background_tile_set+tile_pos*16+y*2);
+            unsign_8 color2=mem.rb(background_tile_set+tile_pos*16+y*2+1);
+            unsign_8 now_color=((color1>>(7-x))&1)+((color2>>(7-x))&1)*2;
             
-            scanrow[i]=palette>>(2*now_color))&3;
+            scanrow[i]=(palette>>(2*now_color))&3;
             int color_real=cal_color(scanrow[i]);
             sf::Color color(color_real,color_real,color_real);
-            
             sf::VertexArray quad(sf::Quads,4);
-            quad[0]=quad[1]=quad[2]=quad[3]=color;
+            quad[0].color=quad[1].color=quad[2].color=quad[3].color=color;
             quad[0].position = sf::Vector2f(i * tileSize.x, gpu_line * tileSize.y);
             quad[1].position = sf::Vector2f((i + 1) * tileSize.x, gpu_line * tileSize.y);
             quad[2].position = sf::Vector2f((i + 1) * tileSize.x, (gpu_line + 1) * tileSize.y);
             quad[3].position = sf::Vector2f(i * tileSize.x, (gpu_line + 1) * tileSize.y);	
             window.draw(quad);
-            tx++;
-            if (tx==8)
+            x++;
+            if (x==8)
             {
-                tx=0;
+                x=0;
                 lineoffset=(lineoffset+1)&31;
-                tile_pos=((mapoffset+lineoffset)<<4)+0x8000;
+                tile_pos=mem.rb(mapoffset+lineoffset);
+                if (tile_set_numeber==0)
+                    tile_pos=signed(tile_pos);
             }
         }
     }
@@ -150,20 +164,27 @@ void Gpu::renderscan()
                 int background_priority=sprite_options&0x80;
 
                 int tile_pos=0x8000+sprite_tile*0x10;
+                unsign_8 color1,color2;
+                int tmp;
                 if (y_flip)
-                    fill=mem.rb(tile_pos+7-(gpu.line-sprite_y));
+                    tmp=sprite_y-gpu_line;
                 else 
-                    fill=mem.rb(tile_pos+(gpu_line-sprite_y));
+                    tmp=gpu_line-sprite_y;
+                color1=mem.rb(tile_pos+tmp*2);
+                color2=mem.rb(tile_pos+tmp*2+1);
                 for(int i=0;i<8; i++)
                 {
-                    if (i+sprite_x>=0&&i+sprite_x<=160&&(fill&(1<<(7-i)))&&(!background_priority||!sanrow[sprite_x+i]))
+                    if (i+sprite_x>=0&&i+sprite_x<=160&&(((int)color1+color2)&(1<<(7-i)))&&(!background_priority||!scanrow[sprite_x+i]))
                         {
-                            int color_number=(fill&(x_flip:((1<<x)?(1<<7-x));
+                            int color_number;
+                            if (x_flip)
+                                color_number=((color1>>i)&1)+((color2>>i)&1)*2;
+                            else color_number=((color1>>(7-i))&1)+((color2>>(7-i))&1)*2;
                             int color_real=cal_color((sprite_pal>>(2*color_number))&3);
                             
                             sf::VertexArray quad(sf::Quads,4);
                             sf::Color color(color_real,color_real,color_real);
-                            quad[0]=quad[1]=quad[2]=quad[3]=color;
+                            quad[0].color=quad[1].color=quad[2].color=quad[3].color=color;
                             quad[0].position = sf::Vector2f((sprite_x+i) * tileSize.x, gpu_line * tileSize.y);
                             quad[1].position = sf::Vector2f((sprite_x+i+1) * tileSize.x, gpu_line * tileSize.y);
                             quad[2].position = sf::Vector2f((sprite_x+i+1) * tileSize.x, (gpu_line + 1) * tileSize.y);
@@ -174,4 +195,6 @@ void Gpu::renderscan()
             }
         }
     }
+    
+    window.display();
 }

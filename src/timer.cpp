@@ -1,18 +1,26 @@
 #include "timer.h"
-#include "mmu.h"
+#include "mem.h"
 #include "cpu.h"
+#include "type.h"
 
 extern Mem mem;
 extern Cpu cpu;
 Timer timer;
 
+void Timer::init()
+{
+    timer_add=0;
+    time_1_16_step=0;
+    div_inc=0;
+}
+
 void Timer::add()
 {
-    time_add+=cpu.time;
-    if (time_add>=16)
+    timer_add+=cpu._time;
+    if (timer_add>=16)
     {
         time_1_16_step++;
-        time_add-=16;
+        timer_add-=16;
         
         div_inc++;// 1/256 clock step
         if (div_inc==16)

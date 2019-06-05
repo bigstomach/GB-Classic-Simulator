@@ -1,9 +1,9 @@
 #pragma once
+#include "mem.h"
+#include "type.h"
 
 #include <functional>
 
-typedef unsigned char unsign_8;
-typedef unsigned short unsign_16;
 
 extern Mem mem;
 
@@ -13,10 +13,14 @@ public:
     void init();  
     unsign_8 reg_a,reg_b,reg_c,reg_d,reg_e,reg_h,reg_l,reg_f;
     unsign_16 reg_sp,reg_pc;
-    unsign_8 time;
+    unsign_8 _time;
     bool halt,master_enable;
     unsign_16 clocktime;
-    std::function<void()> opcode[0xff],cb_opcode[0xff];    
+    std::function<void()> opcode[0x100],cb_opcode[0x100];    
+    void rst40();
+    void rst48();
+    void rst50();
+    void rst60();
 private:   
     void reset();
     void zero_flag(bool flag);
