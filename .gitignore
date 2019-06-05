@@ -43,4 +43,4 @@ compile_commands.json
 CTestTestfile.cmake
 run
 .DS_Store
-.vscode/settings.json
+.vscode

@@ -22,21 +22,18 @@ void init()
 
 void execute_opcode()
 {
-    unsign_8 op=mem.rb(cpu.reg_pc);
-    
+    unsign_8 op=mem.rb(cpu.reg_pc++);
+    int a,b;
+    a=cpu.reg_pc-1;
+    b=op;
+    printf("%x %x %x\n",a,b,cpu.reg_f&(1<<7)?1:0);
     if (op==0xCB) 
     {
-        cpu.reg_pc++; 
-        op=mem.rb(cpu.reg_pc); 
+        op=mem.rb(cpu.reg_pc++); 
         cpu.cb_opcode[op]();
     }
     else cpu.opcode[op]();
 
-    int a=cpu.reg_pc;
-    int b=op;
-    printf("%x %x\n",a,b);
-     
-    cpu.reg_pc++;
     cpu.clocktime+=cpu._time;
      
 }

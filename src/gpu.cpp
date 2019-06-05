@@ -116,7 +116,7 @@ void Gpu::renderscan()
         //if ((lcd_and_gpu_control&0x10)&&tile<128)
         // TODO;
         if (tile_set_numeber==0)
-            tile_pos=signed(tile_pos);
+            tile_pos=sign_8(tile_pos);
         for (int i=0;i<160;i++)
         {
             unsign_8 color1=mem.rb(background_tile_set+tile_pos*16+y*2);
@@ -140,7 +140,7 @@ void Gpu::renderscan()
                 lineoffset=(lineoffset+1)&31;
                 tile_pos=mem.rb(mapoffset+lineoffset);
                 if (tile_set_numeber==0)
-                    tile_pos=signed(tile_pos);
+                    tile_pos=sign_8(tile_pos);
             }
         }
     }

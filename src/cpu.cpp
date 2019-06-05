@@ -301,7 +301,7 @@ void Cpu::jp()
 
 void Cpu::jr()
 {
-    reg_pc=+unsign_16(mem.rb(reg_pc));
+    reg_pc+=sign_8(mem.rb(reg_pc));
     _time=8;
 }
 
