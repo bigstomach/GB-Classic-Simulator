@@ -26,7 +26,7 @@ void execute_opcode()
     int a,b;
     a=cpu.reg_pc-1;
     b=op;
-    printf("%x %x %x\n",a,b,cpu.reg_f&(1<<7)?1:0);
+   // printf("%x %x %x\n",a,b,(cpu.reg_f&(1<<7))?1:0);
     if (op==0xCB) 
     {
         op=mem.rb(cpu.reg_pc++); 

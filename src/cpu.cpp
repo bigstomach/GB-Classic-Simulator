@@ -7,8 +7,8 @@ extern Mem mem;
 
 void Cpu::reset()
 {
-    reg_a=0x1; reg_b=0; reg_c=0x13; reg_d=0; reg_e=0xd8; reg_f=0xb0; reg_h=0x1; reg_l=0x4d;
-    reg_pc=0x00; reg_sp=0xfffe;
+    reg_a=0x00; reg_b=0x00; reg_c=0x00; reg_d=0x00; reg_e=0x00; reg_f=0x00; reg_h=0x00; reg_l=0x00;
+    reg_pc=0x000; reg_sp=0xfffe;
     halt=0; master_enable=1;
     _time=0;
     clocktime=0;
@@ -301,13 +301,14 @@ void Cpu::jp()
 
 void Cpu::jr()
 {
-    reg_pc+=sign_8(mem.rb(reg_pc));
+    sign_8 tmp=sign_8(mem.rb(reg_pc++));
+    reg_pc+=tmp;
     _time=8;
 }
 
 void Cpu::call()
 {
-    reg_sp-=2; mem.ww(reg_sp,reg_pc+2);  jp();
+    reg_sp-=2; mem.ww(reg_sp,reg_pc);  jp();
 }
 
 void Cpu::rst(unsign_8 n)
@@ -791,10 +792,10 @@ void Cpu::init()
     opcode[0xc3]=[&]{jp();};
 
     //JP cc,nn
-    opcode[0xc2]=[&]{if ((reg_f&128)==0) jp();};
-    opcode[0xca]=[&]{if (reg_f&128) jp();};
-    opcode[0xd2]=[&]{if ((reg_f&16)==0) jp();};
-    opcode[0xda]=[&]{if (reg_f&16) jp();};
+    opcode[0xc2]=[&]{if ((reg_f&128)==0) jp();else reg_pc+=2;};
+    opcode[0xca]=[&]{if (reg_f&128) jp();else reg_pc+=2;};
+    opcode[0xd2]=[&]{if ((reg_f&16)==0) jp();else reg_pc+=2;};
+    opcode[0xda]=[&]{if (reg_f&16) jp();else reg_pc+=2;};
 
     //JP (hl)
     opcode[0xe9]=[&]{reg_pc=unsign_16(reg_h<<8)|reg_l; _time=4;};
@@ -803,20 +804,20 @@ void Cpu::init()
     opcode[0x18]=[&]{jr();};
 
     //JR cc,n
-    opcode[0x20]=[&]{if ((reg_f&128)==0) jr();};
-    opcode[0x28]=[&]{if (reg_f&128) jr();};
-    opcode[0x30]=[&]{if ((reg_f&16)==0) jr();};
-    opcode[0x38]=[&]{if (reg_f&16) jr();};
+    opcode[0x20]=[&]{if ((reg_f&128)==0) jr();else reg_pc++;};
+    opcode[0x28]=[&]{if (reg_f&128) jr();else reg_pc++;};
+    opcode[0x30]=[&]{if ((reg_f&16)==0) jr();else reg_pc++;};
+    opcode[0x38]=[&]{if (reg_f&16) jr();else reg_pc++;};
 
     //Calls
     //CALL nn
     opcode[0xcd]=[&]{call();};
 
     //CALL cc,nn
-    opcode[0xc4]=[&]{if ((reg_f&128)==0) call();};
-    opcode[0xcc]=[&]{if (reg_f&128) call();};
-    opcode[0xd4]=[&]{if ((reg_f&16)==0) call();};
-    opcode[0xdc]=[&]{if (reg_f&16) call();};
+    opcode[0xc4]=[&]{if ((reg_f&128)==0) call();else reg_pc+=2;};
+    opcode[0xcc]=[&]{if (reg_f&128) call();else reg_pc+=2;};
+    opcode[0xd4]=[&]{if ((reg_f&16)==0) call();else reg_pc+=2;};
+    opcode[0xdc]=[&]{if (reg_f&16) call();else reg_pc+=2;};
 
     //Restarts
     //RST n

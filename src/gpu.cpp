@@ -125,6 +125,7 @@ void Gpu::renderscan()
             
             scanrow[i]=(palette>>(2*now_color))&3;
             int color_real=cal_color(scanrow[i]);
+            std::cout<<(int)color1<<' '<<(int)color2<<' '<<std::endl;
             sf::Color color(color_real,color_real,color_real);
             sf::VertexArray quad(sf::Quads,4);
             quad[0].color=quad[1].color=quad[2].color=quad[3].color=color;
