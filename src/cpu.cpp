@@ -2,6 +2,7 @@
 #include "mem.h"
 #include "type.h"
 #include <iostream>
+#include <cstdio>
 Cpu cpu;
 extern Mem mem;
 
@@ -9,7 +10,7 @@ void Cpu::reset()
 {
     reg_a=0x00; reg_b=0x00; reg_c=0x00; reg_d=0x00; reg_e=0x00; reg_f=0x00; reg_h=0x00; reg_l=0x00;
     reg_pc=0x000; reg_sp=0xfffe;
-    halt=0; master_enable=1;
+    halt=0; master_enable=0;
     _time=0;
     clocktime=0;
 }
@@ -73,7 +74,7 @@ void Cpu::carry_flag(bool flag)
 
 void Cpu::add(unsign_8 n)
 {
-    zero_flag(reg_a+n==0); 
+    zero_flag(unsign_8(reg_a+n)==0);
     subtract_flag(0); 
     half_carry_flag((reg_a&0xf)+(n&0xf)>15); 
     carry_flag(reg_a+n>255); 
@@ -96,8 +97,8 @@ void Cpu::sub(unsign_8 n)
 {
      zero_flag(reg_a-n==0); 
      subtract_flag(1); 
-     half_carry_flag((reg_a&0xf)-(n&0xf)>0);
-     carry_flag(reg_a>n); 
+     half_carry_flag((reg_a&0xf)-(n&0xf)<0);
+     carry_flag(reg_a<n); 
      reg_a-=n; 
      _time=4;
 }
@@ -107,8 +108,8 @@ void Cpu::sbc(unsign_8 n)
     unsign_8 cf=(reg_f&0x10)?1:0,value=reg_a-n-cf; 
     zero_flag(!value); 
     subtract_flag(1);
-    half_carry_flag((reg_a&0xf)-(n&0xf)-(cf&0xf)>0); 
-    carry_flag(reg_a-n-cf>0); 
+    half_carry_flag((reg_a&0xf)-(n&0xf)-(cf&0xf)<0); 
+    carry_flag((int)reg_a-n-cf<0); 
     reg_a=value; 
     _time=4;
 }
@@ -163,16 +164,16 @@ void Cpu::inc(unsign_8 &n)
 
 void Cpu::dec(unsign_8 &n)
 {
-    zero_flag(!(n-1));
-    subtract_flag(1);
-    half_carry_flag((0xf&n)-1>0);
     n--;
+    zero_flag(n==0);
+    subtract_flag(1);
+    half_carry_flag((n&0x0f)==0x0f);
     _time=4;
 }
 
 void Cpu::add_hl(unsign_16 n)
 {
-    unsign_16 tmp=mem.rw((reg_h<<8)+reg_l);
+    unsign_16 tmp=(reg_h<<8)+reg_l;
     subtract_flag(0);
     half_carry_flag((0xfff&n)+(0xfff&tmp)>4095);
     carry_flag(n+tmp>65535);
@@ -201,12 +202,13 @@ void Cpu::swap_n(unsign_8 &n)
     subtract_flag(0);
     half_carry_flag(0);
     carry_flag(0);
+    _time=8;
 }
 
 void Cpu::rlc(unsign_8 &n)
 {
     carry_flag(n&0x80);
-    n=n<<1|((n&0x80)>>7);
+    n=(n<<1)|((n&0x80)>>7);
     zero_flag(n==0);
     subtract_flag(0);
     half_carry_flag(0);
@@ -215,8 +217,9 @@ void Cpu::rlc(unsign_8 &n)
 
 void Cpu::rl(unsign_8 &n)
 {
+    unsign_8 reg_f_temp=reg_f;
     carry_flag(n&0x80);
-    n=(n<<1)|((reg_f&0x10)>>5);
+    n=(n<<1)|((reg_f_temp&0x10)>>4);
     zero_flag(n==0);
     subtract_flag(0);
     half_carry_flag(0);
@@ -235,8 +238,9 @@ void Cpu::rrc(unsign_8 &n)
 
 void Cpu::rr(unsign_8 &n)
 {
+    unsign_8 reg_f_temp=reg_f;
     carry_flag(n&1);
-    n=(n>>1)+((reg_f&0x10)?0x80:0);
+    n=(n>>1)+((reg_f_temp&0x10)?0x80:0);
     zero_flag(n==0);
     subtract_flag(0);
     half_carry_flag(0);
@@ -275,7 +279,7 @@ void Cpu::srl(unsign_8 &n)
 
 void Cpu::bit(int b, unsign_8 n)
 {
-    zero_flag(n&(1<<b));
+    zero_flag(((n>>b)&1)==0);
     subtract_flag(0);
     half_carry_flag(1);
     _time=8;
@@ -296,29 +300,29 @@ void Cpu::res(int b,unsign_8 &n)
 void Cpu::jp()
 {
     reg_pc=mem.rw(reg_pc); 
-    _time=12;
+    _time=16;
 }
 
 void Cpu::jr()
 {
     sign_8 tmp=sign_8(mem.rb(reg_pc++));
     reg_pc+=tmp;
-    _time=8;
+    _time=12;
 }
 
 void Cpu::call()
 {
-    reg_sp-=2; mem.ww(reg_sp,reg_pc);  jp();
+    reg_sp-=2; mem.ww(reg_sp,reg_pc+2);   jp(); _time=24;
 }
 
 void Cpu::rst(unsign_8 n)
 {
-    reg_sp-=2; mem.ww(reg_sp,reg_pc); reg_pc=n; _time=32;
+    reg_sp-=2; mem.ww(reg_sp,reg_pc); reg_pc=n; _time=16;
 }
 
 void Cpu::ret()
 {
-    reg_pc=mem.rw(reg_sp); reg_sp+=2; _time=8;
+    reg_pc=mem.rw(reg_sp); reg_sp+=2; _time=16;
 }
 
 unsign_8 Cpu::readhl()
@@ -413,7 +417,7 @@ void Cpu::init()
     //LD A,n
     opcode[0x0a]=[&]{reg_a=mem.rb((reg_b<<8)+reg_c); _time=8;};
     opcode[0x1a]=[&]{reg_a=mem.rb((reg_d<<8)+reg_e); _time=8;};
-    opcode[0xfa]=[&]{reg_a=mem.rw(reg_pc); reg_pc+=2; _time=16;};
+    opcode[0xfa]=[&]{reg_a=mem.rb(mem.rw(reg_pc)); reg_pc+=2; _time=16;};
     opcode[0x3e]=[&]{reg_a=mem.rb(reg_pc); reg_pc++; _time=8;};
 
     //LD n,A
@@ -447,14 +451,18 @@ void Cpu::init()
     opcode[0x22]=[&]{writehl(reg_a); if(reg_l==255){reg_l=0; reg_h++;} else reg_l++; _time=8;};
 
     //LDH (n),A
-    opcode[0xf0]=[&]{reg_a=mem.rb(0xff00+mem.rb(reg_pc)); reg_pc++; _time=12;};
+    opcode[0xe0]=[&]{mem.wb(0xff00+mem.rb(reg_pc),reg_a); reg_pc++; _time=12;};
+
+    //LDH A,(n)
+    opcode[0xf0]=[&]{reg_a=mem.rb(0xff00+mem.rb(reg_pc));/*printf("address %x\n",mem.rb(reg_pc)+0xff00);*/ reg_pc++; _time=12;};
+    
 
     
     //16-bit loads
     //LD n,nn
     opcode[0x01]=[&]{reg_c=mem.rb(reg_pc); reg_b=mem.rb(reg_pc+1); reg_pc+=2; _time=12;};
-    opcode[0x11]=[&]{reg_d=mem.rb(reg_pc); reg_e=mem.rb(reg_pc+1); reg_pc+=2; _time=12;};
-    opcode[0x21]=[&]{reg_h=mem.rb(reg_pc); reg_l=mem.rb(reg_pc+1); reg_pc+=2; _time=12;};
+    opcode[0x11]=[&]{reg_e=mem.rb(reg_pc); reg_d=mem.rb(reg_pc+1); reg_pc+=2; _time=12;};
+    opcode[0x21]=[&]{reg_l=mem.rb(reg_pc); reg_h=mem.rb(reg_pc+1); reg_pc+=2; _time=12;};
     opcode[0x31]=[&]{reg_sp=mem.rw(reg_pc); reg_pc+=2; _time=12;};
 
     //LD SP,HL
@@ -490,7 +498,7 @@ void Cpu::init()
     opcode[0x83]=[&]{add(reg_e);};
     opcode[0x84]=[&]{add(reg_h);};
     opcode[0x85]=[&]{add(reg_l);};
-    opcode[0x86]=[&]{unsign_8 value=readhl(); add(value); _time=8;};
+    opcode[0x86]=[&]{unsign_8 value=readhl();/* printf("readhl %x\n",value);*/ add(value); _time=8;};
     opcode[0xc6]=[&]{unsign_8 value=mem.rb(reg_pc); reg_pc++; add(value); _time=8;};
 
     //ADC A,n
@@ -591,26 +599,26 @@ void Cpu::init()
 
     //16-bit Arithmetic
     //ADD HL,n
-    opcode[0x09]=[&]{unsign_16 bc=mem.rw(unsign_16(reg_b<<8)+reg_c); add_hl(bc);}; 
-    opcode[0x19]=[&]{unsign_16 de=mem.rw(unsign_16(reg_d<<8)+reg_e); add_hl(de);}; 
-    opcode[0x29]=[&]{unsign_16 bc=mem.rw(unsign_16(reg_h<<8)+reg_l); add_hl(bc);}; 
-    opcode[0x39]=[&]{unsign_16 sp=mem.rw(reg_sp); reg_sp+=2; add_hl(sp);};
+    opcode[0x09]=[&]{unsign_16 bc=unsign_16(reg_b<<8)+reg_c; add_hl(bc);}; 
+    opcode[0x19]=[&]{unsign_16 de=unsign_16(reg_d<<8)+reg_e; add_hl(de);}; 
+    opcode[0x29]=[&]{unsign_16 hl=unsign_16(reg_h<<8)+reg_l; add_hl(hl);}; 
+    opcode[0x39]=[&]{unsign_16 sp=reg_sp; add_hl(sp);};
 
     //ADD SP,n
     opcode[0xe8]=[&]{unsign_8 n=mem.rb(reg_pc); reg_pc++; int x; if (n>127) x=-(~n+1);else x=n;
-    zero_flag(0);subtract_flag(0);half_carry_flag((0xfff&x)+(0xfff&reg_sp)>4095);carry_flag(x+reg_sp>65535);};
+    zero_flag(0);subtract_flag(0);half_carry_flag((0xfff&x)+(0xfff&reg_sp)>4095);carry_flag(x+reg_sp>65535); _time=16;};
 
     //INC nn
     opcode[0x03]=[&]{inc_16(reg_b,reg_c);};
     opcode[0x13]=[&]{inc_16(reg_d,reg_e);};
     opcode[0x23]=[&]{inc_16(reg_h,reg_l);};
-    opcode[0x33]=[&]{reg_sp++;};
+    opcode[0x33]=[&]{reg_sp++;_time=8;};
 
     //DEC nn
     opcode[0x0b]=[&]{dec_16(reg_b,reg_c);};
     opcode[0x1b]=[&]{dec_16(reg_d,reg_e);};
     opcode[0x2b]=[&]{dec_16(reg_h,reg_l);};
-    opcode[0x3b]=[&]{reg_sp--;};
+    opcode[0x3b]=[&]{reg_sp--;_time=8;};
 
     //Miscellaneous
     //SWAP n
@@ -668,7 +676,7 @@ void Cpu::init()
     opcode[0x07]=[&]{rlc(reg_a);};
 
     //RLA
-    opcode[0x17]=[&]{rl(reg_a);};
+    opcode[0x17]=[&]{rl(reg_a);zero_flag(0);};
 
     //RRCA
     opcode[0x0f]=[&]{rrc(reg_a);};
@@ -734,7 +742,7 @@ void Cpu::init()
     cb_opcode[0x2b]=[&]{sra(reg_e);};
     cb_opcode[0x2c]=[&]{sra(reg_h);};
     cb_opcode[0x2d]=[&]{sra(reg_l);};
-    cb_opcode[0x23]=[&]{unsign_8 tmp=readhl(); sra(tmp); writehl(tmp); _time=16;};
+    cb_opcode[0x2e]=[&]{unsign_8 tmp=readhl(); sra(tmp); writehl(tmp); _time=16;};
 
     //SRL n
     cb_opcode[0x3f]=[&]{srl(reg_a);};
@@ -750,41 +758,41 @@ void Cpu::init()
     //BIT b,r
     for(int i=0; i<8; i++)
     {
-        cb_opcode[0x40+i*8]=[&]{bit(i,reg_b);};
-        cb_opcode[0x41+i*8]=[&]{bit(i,reg_c);};
-        cb_opcode[0x42+i*8]=[&]{bit(i,reg_d);};
-        cb_opcode[0x43+i*8]=[&]{bit(i,reg_e);};
-        cb_opcode[0x44+i*8]=[&]{bit(i,reg_h);};
-        cb_opcode[0x45+i*8]=[&]{bit(i,reg_l);};
-        cb_opcode[0x46+i*8]=[&]{unsign_8 tmp=readhl();bit(i,tmp);_time=16;};
-        cb_opcode[0x47+i*8]=[&]{bit(i,reg_a);};
+        cb_opcode[0x40+i*8]=[&,i]{bit(i,reg_b);};
+        cb_opcode[0x41+i*8]=[&,i]{bit(i,reg_c);};
+        cb_opcode[0x42+i*8]=[&,i]{bit(i,reg_d);};
+        cb_opcode[0x43+i*8]=[&,i]{bit(i,reg_e);};
+        cb_opcode[0x44+i*8]=[&,i]{bit(i,reg_h);};
+        cb_opcode[0x45+i*8]=[&,i]{bit(i,reg_l);};
+        cb_opcode[0x46+i*8]=[&,i]{unsign_8 tmp=readhl();bit(i,tmp); writehl(tmp);_time=16;};
+        cb_opcode[0x47+i*8]=[&,i]{bit(i,reg_a);};
 
     }
 
     //SET b,r
     for(int i=0; i<8; i++)
     {
-        cb_opcode[0xc0+i*8]=[&]{set(i,reg_b);};
-        cb_opcode[0xc1+i*8]=[&]{set(i,reg_c);};
-        cb_opcode[0xc2+i*8]=[&]{set(i,reg_d);};
-        cb_opcode[0xc3+i*8]=[&]{set(i,reg_e);};
-        cb_opcode[0xc4+i*8]=[&]{set(i,reg_h);};
-        cb_opcode[0xc5+i*8]=[&]{set(i,reg_l);};
-        cb_opcode[0xc6+i*8]=[&]{unsign_8 tmp=readhl(); set(i,tmp);_time=16;};
-        cb_opcode[0xc7+i*8]=[&]{set(i,reg_a);};
+        cb_opcode[0xc0+i*8]=[&,i]{set(i,reg_b);};
+        cb_opcode[0xc1+i*8]=[&,i]{set(i,reg_c);};
+        cb_opcode[0xc2+i*8]=[&,i]{set(i,reg_d);};
+        cb_opcode[0xc3+i*8]=[&,i]{set(i,reg_e);};
+        cb_opcode[0xc4+i*8]=[&,i]{set(i,reg_h);};
+        cb_opcode[0xc5+i*8]=[&,i]{set(i,reg_l);};
+        cb_opcode[0xc6+i*8]=[&,i]{unsign_8 tmp=readhl(); set(i,tmp); writehl(tmp);_time=16;};
+        cb_opcode[0xc7+i*8]=[&,i]{set(i,reg_a);};
     }
 
     //RES b,r
     for(int i=0; i<8 ;i++)
     {
-        cb_opcode[0x80+i*8]=[&]{res(i,reg_b);};
-        cb_opcode[0x81+i*8]=[&]{res(i,reg_c);};
-        cb_opcode[0x82+i*8]=[&]{res(i,reg_d);};
-        cb_opcode[0x83+i*8]=[&]{res(i,reg_e);};
-        cb_opcode[0x84+i*8]=[&]{res(i,reg_h);};
-        cb_opcode[0x85+i*8]=[&]{res(i,reg_l);};
-        cb_opcode[0x86+i*8]=[&]{unsign_8 tmp=readhl(); res(i,tmp);_time=16;};
-        cb_opcode[0x87+i*8]=[&]{res(i,reg_a);};
+        cb_opcode[0x80+i*8]=[&,i]{res(i,reg_b);};
+        cb_opcode[0x81+i*8]=[&,i]{res(i,reg_c);};
+        cb_opcode[0x82+i*8]=[&,i]{res(i,reg_d);};
+        cb_opcode[0x83+i*8]=[&,i]{res(i,reg_e);};
+        cb_opcode[0x84+i*8]=[&,i]{res(i,reg_h);};
+        cb_opcode[0x85+i*8]=[&,i]{res(i,reg_l);};
+        cb_opcode[0x86+i*8]=[&,i]{unsign_8 tmp=readhl(); res(i,tmp); writehl(tmp);_time=16;};
+        cb_opcode[0x87+i*8]=[&,i]{res(i,reg_a);};
     }
 
     //Jumps
@@ -792,10 +800,10 @@ void Cpu::init()
     opcode[0xc3]=[&]{jp();};
 
     //JP cc,nn
-    opcode[0xc2]=[&]{if ((reg_f&128)==0) jp();else reg_pc+=2;};
-    opcode[0xca]=[&]{if (reg_f&128) jp();else reg_pc+=2;};
-    opcode[0xd2]=[&]{if ((reg_f&16)==0) jp();else reg_pc+=2;};
-    opcode[0xda]=[&]{if (reg_f&16) jp();else reg_pc+=2;};
+    opcode[0xc2]=[&]{if ((reg_f&128)==0) jp();else {reg_pc+=2;_time=12;}};
+    opcode[0xca]=[&]{if (reg_f&128) jp();else {reg_pc+=2;_time=12;}};
+    opcode[0xd2]=[&]{if ((reg_f&16)==0) jp();else {reg_pc+=2;_time=12;}};
+    opcode[0xda]=[&]{if (reg_f&16) jp();else {reg_pc+=2;_time=12;}};
 
     //JP (hl)
     opcode[0xe9]=[&]{reg_pc=unsign_16(reg_h<<8)|reg_l; _time=4;};
@@ -804,20 +812,20 @@ void Cpu::init()
     opcode[0x18]=[&]{jr();};
 
     //JR cc,n
-    opcode[0x20]=[&]{if ((reg_f&128)==0) jr();else reg_pc++;};
-    opcode[0x28]=[&]{if (reg_f&128) jr();else reg_pc++;};
-    opcode[0x30]=[&]{if ((reg_f&16)==0) jr();else reg_pc++;};
-    opcode[0x38]=[&]{if (reg_f&16) jr();else reg_pc++;};
+    opcode[0x20]=[&]{if ((reg_f&128)==0) {jr(); _time=12;}else {reg_pc++; _time=8;}};
+    opcode[0x28]=[&]{if (reg_f&128) {jr(); _time=12;}else {reg_pc++;_time=8;}};
+    opcode[0x30]=[&]{if ((reg_f&16)==0) {jr();_time=12;}else {reg_pc++;_time=8;}};
+    opcode[0x38]=[&]{if (reg_f&16) {jr(); _time=12;}else {reg_pc++;_time=8;}};
 
     //Calls
     //CALL nn
     opcode[0xcd]=[&]{call();};
 
     //CALL cc,nn
-    opcode[0xc4]=[&]{if ((reg_f&128)==0) call();else reg_pc+=2;};
-    opcode[0xcc]=[&]{if (reg_f&128) call();else reg_pc+=2;};
-    opcode[0xd4]=[&]{if ((reg_f&16)==0) call();else reg_pc+=2;};
-    opcode[0xdc]=[&]{if (reg_f&16) call();else reg_pc+=2;};
+    opcode[0xc4]=[&]{if ((reg_f&128)==0) {call(); _time=24;}else {reg_pc+=2; _time=12;}};
+    opcode[0xcc]=[&]{if (reg_f&128) {call();_time=24;}else {reg_pc+=2;_time=12;}};
+    opcode[0xd4]=[&]{if ((reg_f&16)==0) {call(); _time=24;}else {reg_pc+=2;_time=12;}};
+    opcode[0xdc]=[&]{if (reg_f&16) {call(); _time=24;}else {reg_pc+=2;_time=12;}};
 
     //Restarts
     //RST n
@@ -835,11 +843,11 @@ void Cpu::init()
     opcode[0xc9]=[&]{ret();};
 
     //RET cc
-    opcode[0xc0]=[&]{if ((reg_f&128)==0) ret();};
-    opcode[0xc8]=[&]{if (reg_f&128) ret();};
-    opcode[0xd0]=[&]{if ((reg_f&16)==0) ret();};
-    opcode[0xd8]=[&]{if (reg_f&16) ret();};
+    opcode[0xc0]=[&]{if ((reg_f&128)==0) {ret();_time=20;} else _time=8;};
+    opcode[0xc8]=[&]{if (reg_f&128) {ret(); _time=20;} else _time=8;};
+    opcode[0xd0]=[&]{if ((reg_f&16)==0) {ret();_time=20;} else _time=8;};
+    opcode[0xd8]=[&]{if (reg_f&16) {ret(); _time=20;}else _time=8;};
 
     //RETI
-    opcode[0xd9]=[&]{ret(); master_enable=1; _time=8;};
+    opcode[0xd9]=[&]{ret(); master_enable=1; _time=16;};
 }

@@ -21,4 +21,5 @@ private:
     void renderscan();
     void updatetile();
     int cal_color(unsign_8 x);
+    void update_joypad();
 };

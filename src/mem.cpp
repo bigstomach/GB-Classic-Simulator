@@ -2,7 +2,7 @@
 #include "type.h"
 #include "cpu.h"
 #include <cstring>
-#include <iostream>
+#include <cstdio>
 
 Mem mem;
 extern Cpu cpu;
@@ -17,23 +17,45 @@ void Mem::init()
     current_rom_bank=1;
     current_ram_bank=0;
     inbios=1;
-    mmu[0xff05]=0x00;mmu[0xff06]=0x00;mmu[0xff07]=0x00;mmu[0xff10]=0x80;
+    direction_switch=0;
+    button_switch=0;
+    direction_state=0xf;
+    button_state=0xf;
+   /* mmu[0xff05]=0x00;mmu[0xff06]=0x00;mmu[0xff07]=0x00;mmu[0xff10]=0x80;
     mmu[0xff11]=0xbf;mmu[0xff12]=0xf3;mmu[0xff14]=0xbf;mmu[0xff16]=0x3f;
     mmu[0xff17]=0x00;mmu[0xff19]=0xbf;mmu[0xff1a]=0x7f;mmu[0xff1b]=0xff;
     mmu[0xff1c]=0x9f;mmu[0xff1e]=0xbf;mmu[0xff20]=0xff;mmu[0xff21]=0x00;
     mmu[0xff22]=0x00;mmu[0xff23]=0xbf;mmu[0xff24]=0x77;mmu[0xff25]=0xf3;
     mmu[0xff26]=0xf1;mmu[0xff40]=0x91;mmu[0xff42]=0x00;mmu[0xff43]=0x00;
     mmu[0xff45]=0x00;mmu[0xff47]=0xfc;mmu[0xff48]=0xff;mmu[0xff49]=0xff;
-    mmu[0xff4a]=0x00;mmu[0xff4b]=0x00;mmu[0xffff]=0x00;
+    mmu[0xff4a]=0x00;mmu[0xff4b]=0x00;mmu[0xffff]=0x00;*/
+}
+unsign_8 Mem::get_input()
+{
+    unsign_8 res=0xf;
+
+    if (direction_switch)
+    {
+        res=direction_state;
+    }
+    if (button_switch)
+    {
+        res=button_state;
+    }
+
+    if (!direction_switch) res|=0x10;
+    if (!button_switch) res|=0x20;
+
+    return res;
 }
 
 unsign_8 Mem::rb(unsign_16 address)
 {
-    if (address>=0x0000&&address<0x100)
+    if (address>=0x0000&&address<0x100&&bios_active())
     {
         return bios[address];
     }
-    else if (address>=0x100&&address<0x4000)
+    else if (address<0x4000)
     {
         return cartridge_memory[address];      
     }
@@ -47,6 +69,10 @@ unsign_8 Mem::rb(unsign_16 address)
         unsign_16 tmp_address=address-0xA000;
         return ram_banks[tmp_address+(current_ram_bank*0x2000)];
     }   
+    else if (address==0xff00)
+    {
+        return get_input();
+    }
     return mmu[address];
 }
 
@@ -134,7 +160,7 @@ void Mem::dma_transfer(unsign_8 n)
 
 void Mem::wb(unsign_16 address, unsign_8 n)
 {
-    
+    printf("writebyte %x %x\n",address,n);
     if (address<0x8000)
     {
         deal_banking(address,n);
@@ -156,12 +182,22 @@ void Mem::wb(unsign_16 address, unsign_8 n)
    {
        dma_transfer(n);
    }
+   else if (address==0xff00)
+   {
+       direction_switch=!(n&0x10);
+       button_switch=!(n&0x20);
+   }
    else mmu[address]=n;
-   if (address==0xff40) mmu[address]=0;
+   if (address==0xff44) mmu[address]=0;
 }
 
 void Mem::ww(unsign_16 address, unsign_16 n)
 {
     wb(address+1,(n>>8)); 
     wb(address,n&0xff);
+}
+
+bool Mem::bios_active()
+{
+    return rb(0xff50)!=0x1;
 }

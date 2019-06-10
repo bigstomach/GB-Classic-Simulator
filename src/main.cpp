@@ -1,5 +1,6 @@
 #include <cstdio>
 #include <string>
+#include <time.h>
 
 #include "cpu.h"
 #include "mem.h"
@@ -11,6 +12,7 @@ extern Cpu cpu;
 extern Mem mem;
 extern Gpu gpu;
 extern Timer timer;
+int cas=1;
 
 void init()
 {
@@ -22,129 +24,62 @@ void init()
 
 void execute_opcode()
 {
+    if (cpu.halt) {cpu._time=4; cpu.clocktime+=cpu._time; return;}
     unsign_8 op=mem.rb(cpu.reg_pc++);
     int a,b;
     a=cpu.reg_pc-1;
     b=op;
-   // printf("%x %x %x\n",a,b,(cpu.reg_f&(1<<7))?1:0);
     if (op==0xCB) 
     {
         op=mem.rb(cpu.reg_pc++); 
         cpu.cb_opcode[op]();
+        b=(b<<8)+op;
     }
     else cpu.opcode[op]();
-
+    /*if (cas>=4000000)
+    {
+    printf("case:%d pc:%x op:%x hl:%x flag:%x sp:%x pc:%x a:%x bc:%x de:%x\n",
+    cas,a,b,((int)cpu.reg_h<<8)+cpu.reg_l,cpu.reg_f,cpu.reg_sp,cpu.reg_pc,cpu.reg_a,(cpu.reg_b<<8)+cpu.reg_c,(cpu.reg_d<<8)+cpu.reg_e);
+    printf("0xff44 %d\n",mem.mmu[0xff44]);
+    printf("time %d\n",cpu._time/4);
+    }
+    cas++;
+    if (cas==5000000) mem.button_state&=0x7;
+    if (cas==6000000)exit(0);*/
     cpu.clocktime+=cpu._time;
      
 }
 
-void update_joypad()
-{
-    mem.wb(0xff00,0x3f);
-    sf::Event event;
-    while (gpu.window.pollEvent(event))
-    {
-        if(event.type == sf::Event::Closed)
-            gpu.window.close();
-        if (event.type == sf::Event::KeyPressed)
-        {
-            if (event.key.code==sf::Keyboard::Right)
-            {
-                mem.wb(0xff00,mem.rb(0xff00)&0xde);
-            }
-            if (event.key.code==sf::Keyboard::Left)
-            {
-                mem.wb(0xff00,mem.rb(0xff00)&0xdd);
-            }
-            if (event.key.code==sf::Keyboard::Up)
-            {
-                mem.wb(0xff00,mem.rb(0xff00)&0xdb);
-            }
-            if (event.key.code==sf::Keyboard::Down)
-            {
-                mem.wb(0xff00,mem.rb(0xff00)&0xd7);
-            }
-            if (event.key.code==sf::Keyboard::Z)
-            {
-                mem.wb(0xff00,mem.rb(0xff00)&0xee);
-            }
-            if (event.key.code==sf::Keyboard::X)
-            {
-                mem.wb(0xff00,mem.rb(0xff00)&0xed);
-            }
-            if (event.key.code==sf::Keyboard::Space)
-            {
-                mem.wb(0xff00,mem.rb(0xff00)&0xeb);
-            }
-            if (event.key.code==sf::Keyboard::Return)
-            {
-                mem.wb(0xff00,mem.rb(0xff00)&0xe7);
-            }
-        }
-        if (event.type == sf::Event::KeyReleased)
-        {
-            if (event.key.code==sf::Keyboard::Right)
-            {
-                mem.wb(0xff00,mem.rb(0xff00)|0x21);
-            }
-            if (event.key.code==sf::Keyboard::Left)
-            {
-                mem.wb(0xff00,mem.rb(0xff00)|0x22);
-            }
-            if (event.key.code==sf::Keyboard::Up)
-            {
-                mem.wb(0xff00,mem.rb(0xff00)|0x24);
-            }
-            if (event.key.code==sf::Keyboard::Down)
-            {
-                mem.wb(0xff00,mem.rb(0xff00)|0x28);
-            }
-            if (event.key.code==sf::Keyboard::Z)
-            {
-                mem.wb(0xff00,mem.rb(0xff00)|0x21);
-            }
-            if (event.key.code==sf::Keyboard::X)
-            {
-                mem.wb(0xff00,mem.rb(0xff00)|0x22);
-            }
-            if (event.key.code==sf::Keyboard::Space)
-            {
-                mem.wb(0xff00,mem.rb(0xff00)|0x24);
-            }
-            if (event.key.code==sf::Keyboard::Return)
-            {
-                mem.wb(0xff00,mem.rb(0xff00)|0x28);
-            }
-        }
-    }
-}
+
 
 void do_interrupt()
 {
-    timer.add();
     cpu._time=0;
     unsign_8 interrupt_enable=mem.rb(0xffff),interrupt_flags=mem.rb(0xff0f);
+    //printf("master_interrupt %x flag %x enable %x\n",cpu.master_enable,interrupt_flags,interrupt_enable);
     if(cpu.master_enable&&interrupt_enable&&interrupt_flags)
     {
+        printf("interrupt\n");
+        cpu.halt=0;
         unsign_8 tmp=interrupt_enable&interrupt_flags;
         if(tmp&1)
         {
-            mem.wb(0xff0f,interrupt_flags&0xfe);
+            mem.mmu[0xff0f]=interrupt_flags&0xfe;
             cpu.rst40();
         }
-        if (tmp&2)
+        else if (tmp&2)
         {
-            mem.wb(0xff0f,interrupt_flags&0xfd);
+            mem.mmu[0xff0f]=interrupt_flags&0xfd;
             cpu.rst48();
         }
-        if (tmp&4)
+        else if (tmp&4)
         {
-            mem.wb(0xff0f,interrupt_flags&0xfb);
+            mem.mmu[0xff0f]=interrupt_flags&0xfb;
             cpu.rst50();
         }
-        if (tmp&16)
+        else if (tmp&16)
         {
-            mem.wb(0xff0f,interrupt_flags&0xef);
+            mem.mmu[0xff0f]=interrupt_flags&0xef;
             cpu.rst60();
         }
     }
@@ -155,15 +90,14 @@ void do_interrupt()
 void execute()
 {
     while(gpu.window.isOpen())
-    {   
-        execute_opcode();
-        gpu.timing(); 
-        update_joypad();   
+    {      
         do_interrupt();
+        execute_opcode();
+        gpu.timing();  
+        timer.add();     
         if (cpu._time) 
-        {
+        {   
             timer.add();   
-            gpu.timing(); 
         }
     }
 }
