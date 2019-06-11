@@ -73,6 +73,10 @@ unsign_8 Mem::rb(unsign_16 address)
     {
         return get_input();
     }
+    else if (address>=0xff10&&address<=0xff26)
+    {
+        return 0xff;
+    }
     return mmu[address];
 }
 

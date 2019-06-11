@@ -174,7 +174,7 @@ void Gpu::renderscan()
 
     if (sprites_on)
     {
-        for(int i=0; i<40; i++)
+        for(int i=39; i>=0; i--)
         {
             unsign_16 pos=0xfe00+i*4;
             unsign_8 sprite_y=mem.rb(pos)-16;
@@ -183,7 +183,7 @@ void Gpu::renderscan()
             unsign_8 sprite_options=mem.rb(pos+3);    
             unsign_8 sprite_size=(lcd_and_gpu_control&0x4)?16:8;
             
-            if (sprite_y<=gpu_line&&(sprite_y+sprite_size)>=gpu_line)
+            if (sprite_y<=gpu_line&&(sprite_y+sprite_size)>gpu_line)
             {
                 int sprite_pal=(sprite_options&0x10)?mem.rb(0xff49):mem.rb(0xff48);
                 int x_flip=sprite_options&0x20;
@@ -197,7 +197,7 @@ void Gpu::renderscan()
                 //pixel_y-=8;
 
                 if (y_flip)
-                    pixel_y=7-pixel_y;
+                    pixel_y=sprite_size-pixel_y-1;
 
                 color1=mem.rb(tile_pos+pixel_y*2);
                 color2=mem.rb(tile_pos+pixel_y*2+1);
@@ -212,7 +212,7 @@ void Gpu::renderscan()
                                 color_number=((color1>>(7-i))&1)+((color2>>(7-i))&1)*2;
                             int color_real=cal_color((sprite_pal>>(2*color_number))&3);
                             
-                            if (color_number!=255)
+                            if (color_number!=0)
                             {
                                 sf::VertexArray quad(sf::Quads,4);
                                 sf::Color color(color_real,color_real,color_real);

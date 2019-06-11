@@ -36,16 +36,31 @@ void execute_opcode()
         b=(b<<8)+op;
     }
     else cpu.opcode[op]();
-    /*if (cas>=4000000)
+    /*if (cas>=0000000)
     {
     printf("case:%d pc:%x op:%x hl:%x flag:%x sp:%x pc:%x a:%x bc:%x de:%x\n",
     cas,a,b,((int)cpu.reg_h<<8)+cpu.reg_l,cpu.reg_f,cpu.reg_sp,cpu.reg_pc,cpu.reg_a,(cpu.reg_b<<8)+cpu.reg_c,(cpu.reg_d<<8)+cpu.reg_e);
     printf("0xff44 %d\n",mem.mmu[0xff44]);
     printf("time %d\n",cpu._time/4);
-    }
+    }*/
     cas++;
-    if (cas==5000000) mem.button_state&=0x7;
-    if (cas==6000000)exit(0);*/
+    /*if (cas==3511690) 
+    {mem.button_state&=0x7;
+    //printf("press\n");
+    }
+    if (cas==3616043)
+    {
+        mem.button_state|=0x8;
+    }
+    if (cas==3649010)
+    {
+        mem.button_state&=0x7;
+    }
+    if (cas==3653533)
+    {
+        mem.button_state|=0x8;
+    }*/
+    //if (cas==4000000)exit(0);
     cpu.clocktime+=cpu._time;
      
 }
@@ -59,7 +74,7 @@ void do_interrupt()
     //printf("master_interrupt %x flag %x enable %x\n",cpu.master_enable,interrupt_flags,interrupt_enable);
     if(cpu.master_enable&&interrupt_enable&&interrupt_flags)
     {
-        printf("interrupt\n");
+        //printf("interrupt\n");
         cpu.halt=0;
         unsign_8 tmp=interrupt_enable&interrupt_flags;
         if(tmp&1)
@@ -105,7 +120,7 @@ void execute()
 void loading_in_game()
 {    
     FILE *in;
-    in=fopen("tetris.gb","rb");
+    in=fopen("ttt.gb","rb");
     fread(mem.cartridge_memory,1,0x200000,in);
     fclose(in);
 

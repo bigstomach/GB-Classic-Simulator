@@ -155,10 +155,10 @@ void Cpu::cp(unsign_8 n)
 
 void Cpu::inc(unsign_8 &n)
 {
-    zero_flag(!(n+1));
-    subtract_flag(0);
-    half_carry_flag((0xf&n)+1>15);
     n++;
+    zero_flag(n==0);
+    subtract_flag(0);
+    half_carry_flag((n&0x0f)==0x00);
     _time=4;
 }
 
@@ -454,8 +454,9 @@ void Cpu::init()
     opcode[0xe0]=[&]{mem.wb(0xff00+mem.rb(reg_pc),reg_a); reg_pc++; _time=12;};
 
     //LDH A,(n)
-    opcode[0xf0]=[&]{reg_a=mem.rb(0xff00+mem.rb(reg_pc));/*printf("address %x\n",mem.rb(reg_pc)+0xff00);*/ reg_pc++; _time=12;};
+    opcode[0xf0]=[&]{reg_a=mem.rb(0xff00+mem.rb(reg_pc));printf("address %x\n",mem.rb(reg_pc)+0xff00); reg_pc++; _time=12;};
     
+
 
     
     //16-bit loads
@@ -605,8 +606,17 @@ void Cpu::init()
     opcode[0x39]=[&]{unsign_16 sp=reg_sp; add_hl(sp);};
 
     //ADD SP,n
-    opcode[0xe8]=[&]{unsign_8 n=mem.rb(reg_pc); reg_pc++; int x; if (n>127) x=-(~n+1);else x=n;
-    zero_flag(0);subtract_flag(0);half_carry_flag((0xfff&x)+(0xfff&reg_sp)>4095);carry_flag(x+reg_sp>65535); _time=16;};
+    opcode[0xe8]=[&]{
+        sign_8 tmp=sign_8(mem.rb(reg_pc)); 
+        reg_pc++; 
+        int result=(int)reg_sp+tmp;
+        zero_flag(0);
+        subtract_flag(0);
+        half_carry_flag(((reg_sp^tmp^(result&0xffff))&0x10)==0x10);
+        carry_flag(((reg_sp^tmp^(result&0xffff))&0x100)==0x100);
+        reg_sp+=tmp;
+        _time=16;
+    };
 
     //INC nn
     opcode[0x03]=[&]{inc_16(reg_b,reg_c);};
@@ -673,7 +683,7 @@ void Cpu::init()
 
     //ROTATES & SHIFTS
     //RLCA
-    opcode[0x07]=[&]{rlc(reg_a);};
+    opcode[0x07]=[&]{rlc(reg_a);zero_flag(0);};
 
     //RLA
     opcode[0x17]=[&]{rl(reg_a);zero_flag(0);};
@@ -764,7 +774,7 @@ void Cpu::init()
         cb_opcode[0x43+i*8]=[&,i]{bit(i,reg_e);};
         cb_opcode[0x44+i*8]=[&,i]{bit(i,reg_h);};
         cb_opcode[0x45+i*8]=[&,i]{bit(i,reg_l);};
-        cb_opcode[0x46+i*8]=[&,i]{unsign_8 tmp=readhl();bit(i,tmp); writehl(tmp);_time=16;};
+        cb_opcode[0x46+i*8]=[&,i]{unsign_8 tmp=readhl();bit(i,tmp); _time=12;};
         cb_opcode[0x47+i*8]=[&,i]{bit(i,reg_a);};
 
     }
