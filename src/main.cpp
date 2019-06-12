@@ -42,9 +42,9 @@ void execute_opcode()
     cas,a,b,((int)cpu.reg_h<<8)+cpu.reg_l,cpu.reg_f,cpu.reg_sp,cpu.reg_pc,cpu.reg_a,(cpu.reg_b<<8)+cpu.reg_c,(cpu.reg_d<<8)+cpu.reg_e);
     printf("0xff44 %d\n",mem.mmu[0xff44]);
     printf("time %d\n",cpu._time/4);
-    }*/
+    }
     cas++;
-    /*if (cas==3511690) 
+    if (cas==3511690) 
     {mem.button_state&=0x7;
     //printf("press\n");
     }
@@ -59,8 +59,8 @@ void execute_opcode()
     if (cas==3653533)
     {
         mem.button_state|=0x8;
-    }*/
-    //if (cas==4000000)exit(0);
+    }
+    if (cas==4000000)exit(0);*/
     cpu.clocktime+=cpu._time;
      
 }
@@ -72,7 +72,7 @@ void do_interrupt()
     cpu._time=0;
     unsign_8 interrupt_enable=mem.rb(0xffff),interrupt_flags=mem.rb(0xff0f);
     //printf("master_interrupt %x flag %x enable %x\n",cpu.master_enable,interrupt_flags,interrupt_enable);
-    if(cpu.master_enable&&interrupt_enable&&interrupt_flags)
+    if(cpu.master_enable&&(interrupt_enable&interrupt_flags))
     {
         //printf("interrupt\n");
         cpu.halt=0;
@@ -117,10 +117,10 @@ void execute()
     }
 }
 
-void loading_in_game()
+void loading_in_game(char* filename)
 {    
     FILE *in;
-    in=fopen("tank.gb","rb");
+    in=fopen(filename,"rb");
     fread(mem.cartridge_memory,1,0x200000,in);
     fclose(in);
 
@@ -135,7 +135,7 @@ void loading_in_game()
     }
 }
 
-int main()
+int main(int argc,char** argv)
 {
 	/*int tiles[160*144] =
     {
@@ -176,7 +176,7 @@ int main()
     }*/
     init();
     
-    loading_in_game();
+    loading_in_game(argv[1]);
    
     execute();
 

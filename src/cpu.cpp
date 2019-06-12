@@ -533,6 +533,7 @@ void Cpu::init()
     opcode[0x9c]=[&]{sbc(reg_h);};
     opcode[0x9d]=[&]{sbc(reg_l);};
     opcode[0x9e]=[&]{unsign_8 value=readhl(); sbc(value); _time=8;};
+    opcode[0xde]=[&]{unsign_8 value=mem.rb(reg_pc); reg_pc++; sbc(value); _time=8;};
 
     //AND n
     opcode[0xa7]=[&]{_and(reg_a);};
@@ -689,10 +690,10 @@ void Cpu::init()
     opcode[0x17]=[&]{rl(reg_a);zero_flag(0);};
 
     //RRCA
-    opcode[0x0f]=[&]{rrc(reg_a);};
+    opcode[0x0f]=[&]{rrc(reg_a);zero_flag(0);};
 
     //RRA
-    opcode[0x1f]=[&]{rr(reg_a);};
+    opcode[0x1f]=[&]{rr(reg_a);zero_flag(0);};
 
     //RLC n
     cb_opcode[0x07]=[&]{rlc(reg_a); _time=8;};
