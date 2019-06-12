@@ -120,7 +120,7 @@ void execute()
 void loading_in_game()
 {    
     FILE *in;
-    in=fopen("ttt.gb","rb");
+    in=fopen("tank.gb","rb");
     fread(mem.cartridge_memory,1,0x200000,in);
     fclose(in);
 

@@ -115,6 +115,7 @@ int Gpu::cal_color(unsign_8 x)
 
 void Gpu::renderscan()
 {
+    bool draw_window=false;
     lcd_and_gpu_control=mem.rb(0xff40);
     int background_on=lcd_and_gpu_control&1;
     int sprites_on=lcd_and_gpu_control&2;
@@ -123,19 +124,36 @@ void Gpu::renderscan()
     {
         unsign_8 scroll_y=mem.rb(0xff42);
         unsign_8 scroll_x=mem.rb(0xff43);
+        unsign_8 window_y=mem.rb(0xff4a);
+        unsign_8 window_x=mem.rb(0xff4b)-7;
         unsign_8 cur_scan_line=mem.rb(0xff44);
         unsign_8 palette=mem.rb(0xff47);
 
-        unsign_16 mapoffset=(lcd_and_gpu_control&0x8)?0x9c00:0x9800;
+        if ((lcd_and_gpu_control&0x20)&&(window_y<=cur_scan_line)&&(cur_scan_line-window_y<=144))
+            draw_window=true;
+
+        unsign_16 mapoffset;
+        if (draw_window)
+            mapoffset=(lcd_and_gpu_control&0x40)?0x9c00:0x9800;
+        else 
+            mapoffset=(lcd_and_gpu_control&0x8)?0x9c00:0x9800;
+
         unsign_8 tile_set_number=(lcd_and_gpu_control&0x10)?1:0;
         unsign_16 background_tile_set=tile_set_number?0x8000:0x9000;
-        
+
+        unsign_16 y_in_map,x_in_map;
+        if (draw_window)
+            y_in_map=cur_scan_line-window_y;
+        else 
+            y_in_map=(scroll_y+cur_scan_line)%256;
         
         for (int i=0;i<160;i++)
         {
-            unsign_16 x_in_map=(scroll_x+i)%256;
-            unsign_16 y_in_map=(scroll_y+cur_scan_line)%256;
-
+            if (draw_window)
+                x_in_map=window_x+i;
+            else
+                x_in_map=(scroll_x+i)%256;
+            
             unsign_16 tile_x=x_in_map/8;
             unsign_16 tile_y=y_in_map/8;
 
@@ -194,7 +212,6 @@ void Gpu::renderscan()
                 unsign_8 color1,color2;
 
                 int pixel_y=gpu_line-sprite_y;
-                //pixel_y-=8;
 
                 if (y_flip)
                     pixel_y=sprite_size-pixel_y-1;
