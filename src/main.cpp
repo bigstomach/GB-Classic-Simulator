@@ -13,6 +13,7 @@ extern Mem mem;
 extern Gpu gpu;
 extern Timer timer;
 int cas=1;
+FILE *in;
 
 void init()
 {
@@ -104,10 +105,8 @@ void execute()
     }
 }
 
-void loading_in_game(char* filename)
+void loading_in_game()
 {    
-    FILE *in;
-    in=fopen(filename,"rb");
     fread(mem.cartridge_memory,1,0x200000,in);
     fclose(in);
 
@@ -161,11 +160,26 @@ int main(int argc,char** argv)
         }
 		window.display();
     }*/
+   
+    if (!(in=fopen(argv[1],"rb")))
+    {
+        puts("文件不存在！");
+        exit(0);
+    }
+    
     init();
     
-    loading_in_game(argv[1]);
-   
-    execute();
+    loading_in_game();
+
+    try
+    {
+        execute();
+    }
+    catch(const std::exception& e)
+    {
+        puts("执行异常，请检查rom文件是否合法");
+    }
+    
 
 
     return 0;
