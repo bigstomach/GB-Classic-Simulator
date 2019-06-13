@@ -173,9 +173,9 @@ void Gpu::renderscan()
             unsign_16 tile_line=background_tile_set+tile_pos*16+y_in_tile*2;
             unsign_8 color1=mem.rb(tile_line);
             unsign_8 color2=mem.rb(tile_line+1);
-            unsign_8 now_color=((color1>>(7-x_in_tile))&1)+((color2>>(7-x_in_tile))&1)*2;
+            unsign_8 now_color=scanrow[i]=((color1>>(7-x_in_tile))&1)+((color2>>(7-x_in_tile))&1)*2;
             
-            int color_number=scanrow[i]=(palette>>(2*now_color))&3;
+            int color_number=(palette>>(2*now_color))&3;
             int color_real=cal_color(color_number);
             
             sf::Color color(color_real,color_real,color_real);
@@ -194,8 +194,8 @@ void Gpu::renderscan()
         for(int i=39; i>=0; i--)
         {
             unsign_16 pos=0xfe00+i*4;
-            unsign_8 sprite_y=mem.rb(pos)-16;
-            unsign_8 sprite_x=mem.rb(pos+1)-8;
+            int sprite_y=mem.rb(pos)-16;
+            int sprite_x=mem.rb(pos+1)-8;
             unsign_8 sprite_tile=mem.rb(pos+2);
             unsign_8 sprite_options=mem.rb(pos+3);    
             unsign_8 sprite_size=(lcd_and_gpu_control&0x4)?16:8;
