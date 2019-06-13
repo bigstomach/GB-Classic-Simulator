@@ -21,6 +21,8 @@ void Mem::init()
     button_switch=0;
     direction_state=0xf;
     button_state=0xf;
+    enable_ram=0;
+    ram_mode=1;
    /* mmu[0xff05]=0x00;mmu[0xff06]=0x00;mmu[0xff07]=0x00;mmu[0xff10]=0x80;
     mmu[0xff11]=0xbf;mmu[0xff12]=0xf3;mmu[0xff14]=0xbf;mmu[0xff16]=0x3f;
     mmu[0xff17]=0x00;mmu[0xff19]=0xbf;mmu[0xff1a]=0x7f;mmu[0xff1b]=0xff;
@@ -164,14 +166,14 @@ void Mem::dma_transfer(unsign_8 n)
 
 void Mem::wb(unsign_16 address, unsign_8 n)
 {
-    printf("writebyte %x %x\n",address,n);
+    //printf("writebyte %x %x\n",address,n);
     if (address<0x8000)
     {
         deal_banking(address,n);
     }
     else if (address>=0xa000&&address<0xc000)
     {
-        if (enable_ram)
+        if (!enable_ram)
         {
             unsign_16 tmp_address=address-0xa000;
             ram_banks[tmp_address+(current_ram_bank*0x2000)]=n;

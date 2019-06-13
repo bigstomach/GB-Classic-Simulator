@@ -42,10 +42,10 @@ void Timer::add()
         if (time_1_16_step>=threshold) 
         {
             time_1_16_step=0;
-            mem.wb(0xff05,mem.rb(0xff05)+1);
+            mem.mmu[0xff05]++;
             if (mem.rb(0xff05)==0)
             {
-                mem.wb(0xff05,mem.rb(0xff06));
+                mem.mmu[0xff05]=mem.rb(0xff06);
                 mem.mmu[0xff0f]=mem.rb(0xff0f)|4;
             }
         } 

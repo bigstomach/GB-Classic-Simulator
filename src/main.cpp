@@ -36,33 +36,20 @@ void execute_opcode()
         b=(b<<8)+op;
     }
     else cpu.opcode[op]();
-    /*if (cas>=0000000)
+    /*if (cas>=66000000)
     {
     printf("case:%d pc:%x op:%x hl:%x flag:%x sp:%x pc:%x a:%x bc:%x de:%x\n",
-    cas,a,b,((int)cpu.reg_h<<8)+cpu.reg_l,cpu.reg_f,cpu.reg_sp,cpu.reg_pc,cpu.reg_a,(cpu.reg_b<<8)+cpu.reg_c,(cpu.reg_d<<8)+cpu.reg_e);
+    cas,a,b,((int)cpu.reg_h<<8)+cpu.reg_l,cpu.reg_f&0xf0,cpu.reg_sp,cpu.reg_pc,cpu.reg_a,(cpu.reg_b<<8)+cpu.reg_c,(cpu.reg_d<<8)+cpu.reg_e);
     printf("0xff44 %d\n",mem.mmu[0xff44]);
     printf("time %d\n",cpu._time/4);
     }
     cas++;
-    if (cas==3511690) 
-    {mem.button_state&=0x7;
-    //printf("press\n");
-    }
-    if (cas==3616043)
-    {
-        mem.button_state|=0x8;
-    }
-    if (cas==3649010)
-    {
-        mem.button_state&=0x7;
-    }
-    if (cas==3653533)
-    {
-        mem.button_state|=0x8;
-    }
-    if (cas==4000000)exit(0);*/
+    if (cas==66541490||cas==66794052||cas==67874752||cas==68226906) mem.button_state&=0x7;
+    if (cas==67755028) mem.button_state&=0xe;
+    if (cas==66549634||cas==66795291||cas==67876350||cas==68228063)mem.button_state|=0x8;
+    if (cas==67756370) mem.button_state|=0x1;
+    if (cas==70000000) exit(0);*/
     cpu.clocktime+=cpu._time;
-     
 }
 
 

@@ -417,12 +417,12 @@ void Cpu::init()
     //LD A,n
     opcode[0x0a]=[&]{reg_a=mem.rb((reg_b<<8)+reg_c); _time=8;};
     opcode[0x1a]=[&]{reg_a=mem.rb((reg_d<<8)+reg_e); _time=8;};
-    opcode[0xfa]=[&]{reg_a=mem.rb(mem.rw(reg_pc)); reg_pc+=2; _time=16;};
+    opcode[0xfa]=[&]{reg_a=mem.rb(mem.rw(reg_pc)); /*printf("check%x\n",mem.rw(reg_pc))*/;reg_pc+=2; _time=16;};
     opcode[0x3e]=[&]{reg_a=mem.rb(reg_pc); reg_pc++; _time=8;};
 
     //LD n,A
     opcode[0x47]=[&]{reg_b=reg_a; _time=4;};
-    opcode[0x4f]=[&]{reg_c=reg_a; _time=4;};
+    opcode[0x4f]=[&]{reg_c=reg_a; _time=4;}; 
     opcode[0x57]=[&]{reg_d=reg_a; _time=4;};
     opcode[0x5f]=[&]{reg_e=reg_a; _time=4;};
     opcode[0x67]=[&]{reg_h=reg_a; _time=4;};
@@ -454,7 +454,7 @@ void Cpu::init()
     opcode[0xe0]=[&]{mem.wb(0xff00+mem.rb(reg_pc),reg_a); reg_pc++; _time=12;};
 
     //LDH A,(n)
-    opcode[0xf0]=[&]{reg_a=mem.rb(0xff00+mem.rb(reg_pc));printf("address %x\n",mem.rb(reg_pc)+0xff00); reg_pc++; _time=12;};
+    opcode[0xf0]=[&]{reg_a=mem.rb(0xff00+mem.rb(reg_pc));/*printf("address %x\n",mem.rb(reg_pc)+0xff00); */reg_pc++; _time=12;};
     
 
 
@@ -470,8 +470,18 @@ void Cpu::init()
     opcode[0xf9]=[&]{reg_sp=unsign_16(reg_h<<8)+reg_l; _time=8;};
 
     //LDHL SP,n
-    opcode[0xf8]=[&]{unsign_8 n=mem.rb(reg_pc); int x; if (n>127) x=-(~n+1);else x=n; reg_pc++; int value=x+reg_sp; reg_h=(value>>8); reg_l=value&255;
-    zero_flag(0); subtract_flag(0); half_carry_flag((x&0xf)+(reg_sp&0xf)>15); carry_flag(value>255); _time=12;};
+    opcode[0xf8]=[&]{
+    sign_8 n=sign_8(mem.rb(reg_pc)); 
+    reg_pc++; 
+    unsign_16 value=n+reg_sp; 
+    reg_h=(value>>8); 
+    reg_l=value&255;
+    zero_flag(0); 
+    subtract_flag(0); 
+    half_carry_flag(((n^reg_sp^(value&0xffff))&0x10)==0x10); 
+    carry_flag(((n^reg_sp^(value&0xffff))&0x100)==0x100); 
+    _time=12;
+    };
 
     //LD (nn),SP
     opcode[0x08]=[&]{mem.ww(mem.rw(reg_pc),reg_sp); reg_pc+=2; _time=20;};
@@ -483,7 +493,7 @@ void Cpu::init()
     opcode[0xe5]=[&]{reg_sp--; mem.wb(reg_sp,reg_h); reg_sp--; mem.wb(reg_sp,reg_l); _time=16;};
 
     //POP nn
-    opcode[0xf1]=[&]{reg_f=mem.rb(reg_sp); reg_sp++; reg_a=mem.rb(reg_sp); reg_sp++; _time=12;};
+    opcode[0xf1]=[&]{reg_f=mem.rb(reg_sp); reg_f&=0xf0; reg_sp++; reg_a=mem.rb(reg_sp); reg_sp++; _time=12;};
     opcode[0xc1]=[&]{reg_c=mem.rb(reg_sp); reg_sp++; reg_b=mem.rb(reg_sp); reg_sp++; _time=12;};
     opcode[0xd1]=[&]{reg_e=mem.rb(reg_sp); reg_sp++; reg_d=mem.rb(reg_sp); reg_sp++; _time=12;};
     opcode[0xe1]=[&]{reg_l=mem.rb(reg_sp); reg_sp++; reg_h=mem.rb(reg_sp); reg_sp++; _time=12;};
@@ -644,14 +654,14 @@ void Cpu::init()
 
     //DAA
     opcode[0x27]=[&]{
-        unsign_8 tmp=0;
-        if (reg_f&32||(reg_a&0xf)>9)
-        tmp+=0x06;
-        if (reg_f&16||(reg_a>>4)>9)
-        tmp+=0x60;
+        unsign_16 tmp=0;
+        if (reg_f&0x20||(!(reg_f&0x40)&&(reg_a&0xf)>9))
+        tmp|=0x06;
+        if (reg_f&0x10||(!(reg_f&0x40)&&(reg_a>0x99)))
+        tmp|=0x60;
         if (reg_f&64)
-        reg_a+=tmp;
-        else reg_a-=tmp;
+        reg_a-=tmp;
+        else reg_a+=tmp;
         zero_flag(reg_a==0);
         half_carry_flag(0);
         carry_flag(((int)tmp<<2)&0x100);

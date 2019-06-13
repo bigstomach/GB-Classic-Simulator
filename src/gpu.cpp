@@ -141,18 +141,17 @@ void Gpu::renderscan()
         unsign_8 tile_set_number=(lcd_and_gpu_control&0x10)?1:0;
         unsign_16 background_tile_set=tile_set_number?0x8000:0x9000;
 
-        unsign_16 y_in_map,x_in_map;
+        unsign_8 y_in_map,x_in_map;
         if (draw_window)
             y_in_map=cur_scan_line-window_y;
         else 
-            y_in_map=(scroll_y+cur_scan_line)%256;
+            y_in_map=scroll_y+cur_scan_line;
         
-        for (int i=0;i<160;i++)
+        for (unsign_8 i=0;i<160;i++)
         {
+            x_in_map=scroll_x+i;
             if (draw_window)
-                x_in_map=window_x+i;
-            else
-                x_in_map=(scroll_x+i)%256;
+                x_in_map=i-window_x;       
             
             unsign_16 tile_x=x_in_map/8;
             unsign_16 tile_y=y_in_map/8;
