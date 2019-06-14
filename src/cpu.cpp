@@ -871,4 +871,17 @@ void Cpu::init()
 
     //RETI
     opcode[0xd9]=[&]{ret(); master_enable=1; _time=16;};
+
+    opcode[0xcb]=[&]{};
+    opcode[0xd3]=[&]{};
+    opcode[0xdb]=[&]{};
+    opcode[0xdd]=[&]{};
+    opcode[0xe3]=[&]{};
+    opcode[0xe4]=[&]{};
+    opcode[0xeb]=[&]{};
+    opcode[0xec]=[&]{};
+    opcode[0xed]=[&]{};
+    opcode[0xf4]=[&]{};
+    opcode[0xfc]=[&]{};
+    opcode[0xfd]=[&]{};
 }
