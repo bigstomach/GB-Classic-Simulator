@@ -31,9 +31,6 @@
 *.out
 *.app
 
-#GB ROMs
-*.gb
-
 # Cmakes
 CMakeCache.txt
 CMakeFiles
