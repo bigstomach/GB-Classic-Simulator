@@ -100,6 +100,8 @@ void loading_in_game()
         case 6:mem.memory_bank_controller_2=1; break;
         default: break;
     }
+
+    mem.load_game();
 }
 
 int main(int argc,char** argv)

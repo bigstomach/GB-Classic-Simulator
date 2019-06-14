@@ -198,3 +198,24 @@ bool Mem::bios_active()
 {
     return rb(0xff50)!=0x1;
 }
+
+void Mem::save_game()
+{
+    char filename[20]={};
+    for (int i=0;i<10;i++)filename[i]=cartridge_memory[0x134+i];
+    strcat(filename,".dat");
+    FILE *save=fopen(filename,"wb");
+    fwrite(ram_banks,1,0x8000,save);
+}
+
+void Mem::load_game()
+{
+    char filename[20]={};
+    for (int i=0;i<10;i++)filename[i]=cartridge_memory[0x134+i];
+    strcat(filename,".dat");
+    FILE *save;
+    if (!!(save=fopen(filename,"rb")))
+    {
+        fread(ram_banks,1,0x8000,save);
+    }
+}

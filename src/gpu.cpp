@@ -265,7 +265,10 @@ void Gpu::update_joypad()
     while (gpu.window.pollEvent(event))
     {
         if(event.type == sf::Event::Closed)
+        {
+            mem.save_game();
             gpu.window.close();
+        }
         // key pressed
         if (event.type == sf::Event::KeyPressed)
         {
