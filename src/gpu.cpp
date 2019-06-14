@@ -28,22 +28,25 @@ void Gpu::timing()
     int a=gpu_clock,b=gpu_mode,c=gpu_line;
     switch (gpu_mode)
     {
-        case 2:
+        case 2://OAM
             if (gpu_clock>=80)
             {
                 gpu_mode=3;
                 gpu_clock%=80;
+                //lcd control
                 mem.mmu[0xff41]|=0x2;
                 mem.mmu[0xff41]|=0x1;
             }
             break;
 
-        case 3:
+        case 3://VRAM
             if (gpu_clock>=172)
             {
                 gpu_mode=0;
                 gpu_clock%=172;
+                //lcd control
                 bool hblank_interrupt=mem.mmu[0xff41]&0x8;
+                //interrupt control
                 if (hblank_interrupt) mem.mmu[0xff0f]|=0x2;
                 
                 bool ly_interrupt=mem.mmu[0xff41]&0x40;
@@ -59,7 +62,7 @@ void Gpu::timing()
             }
             break;
 
-        case 0:
+        case 0://HBLANK
             if (gpu_clock>=204)
             {
                 renderscan();
@@ -70,14 +73,16 @@ void Gpu::timing()
                 {
                     gpu_mode=1;
                     gpu_line=0;
+                    //lcd control
                     mem.mmu[0xff41]&=0xfd;
                     mem.mmu[0xff41]|=0x1;
+                    //interrupt control
                     mem.mmu[0xff0f]|=0x1;
                     window.display();
-                    // GPU._canvas.putImageData(GPU._scrn, 0, 0); ???
                 }
                 else
                 {
+                    //lcd control
                     mem.mmu[0xff41]|=0x2;
                     mem.mmu[0xff41]&=0xfe;
                     gpu_mode=2;
@@ -85,12 +90,13 @@ void Gpu::timing()
             }
             break;
 
-        case 1:
+        case 1://VBLANK
             if (gpu_clock>=4560)
             {
                 gpu_mode=2;
                 gpu_line=0;
                 mem.mmu[0xff44]=0;
+                //lcd control
                 mem.mmu[0xff41]|=0x2;
                 mem.mmu[0xff41]&=0xfe;
                 gpu_clock%=4560;
@@ -120,6 +126,7 @@ void Gpu::renderscan()
     int background_on=lcd_and_gpu_control&1;
     int sprites_on=lcd_and_gpu_control&2;
     unsign_8 scanrow[160]={0};
+    //render background or window
     if (background_on)
     {
         unsign_8 scroll_y=mem.rb(0xff42);
@@ -129,6 +136,7 @@ void Gpu::renderscan()
         unsign_8 cur_scan_line=mem.rb(0xff44);
         unsign_8 palette=mem.rb(0xff47);
 
+        //judge to draw whether background or window
         if ((lcd_and_gpu_control&0x20)&&(window_y<=cur_scan_line)&&(cur_scan_line-window_y<=144))
             draw_window=true;
 
@@ -149,9 +157,10 @@ void Gpu::renderscan()
         
         for (unsign_8 i=0;i<160;i++)
         {
-            x_in_map=scroll_x+i;
             if (draw_window)
-                x_in_map=i-window_x;       
+                x_in_map=i-window_x;  
+            else 
+                x_in_map=scroll_x+i;     
             
             unsign_16 tile_x=x_in_map/8;
             unsign_16 tile_y=y_in_map/8;
@@ -160,21 +169,21 @@ void Gpu::renderscan()
             unsign_16 y_in_tile=y_in_map%8;
 
             unsign_16 tile_index=tile_y*32+tile_x;
-
+            //get the tile address from tile map in the memory address
             unsign_16 tile_address=mapoffset+tile_index;
 
             int tile_pos;
-
+            //get the tile pos in the tile set 
             if (tile_set_number==0)
-                tile_pos=sign_8(mem.rb(tile_address));
+                tile_pos=static_cast<sign_8>(mem.rb(tile_address));
             else 
                 tile_pos=mem.rb(tile_address);
-
+            //get the tile line in the tile set
             unsign_16 tile_line=background_tile_set+tile_pos*16+y_in_tile*2;
             unsign_8 color1=mem.rb(tile_line);
             unsign_8 color2=mem.rb(tile_line+1);
             unsign_8 now_color=scanrow[i]=((color1>>(7-x_in_tile))&1)+((color2>>(7-x_in_tile))&1)*2;
-            
+            //get color from palette
             int color_number=(palette>>(2*now_color))&3;
             int color_real=cal_color(color_number);
             
@@ -189,6 +198,7 @@ void Gpu::renderscan()
         }
     }
 
+    //render sprites
     if (sprites_on)
     {
         for(int i=39; i>=0; i--)
@@ -206,7 +216,6 @@ void Gpu::renderscan()
                 int x_flip=sprite_options&0x20;
                 int y_flip=sprite_options&0x40; 
                 int background_priority=sprite_options&0x80;
-
                 int tile_pos=0x8000+sprite_tile*0x10;
                 unsign_8 color1,color2;
 
@@ -214,11 +223,13 @@ void Gpu::renderscan()
 
                 if (y_flip)
                     pixel_y=sprite_size-pixel_y-1;
-
+                
+                //get the tile address in the memory address
                 color1=mem.rb(tile_pos+pixel_y*2);
                 color2=mem.rb(tile_pos+pixel_y*2+1);
                 for(int i=0;i<8; i++)
                 {
+                    //if sprite in screen and if sprites priority or background transparent then draw sprite
                     if ((i+sprite_x>=0&&i+sprite_x<=160)&&(!background_priority||!scanrow[sprite_x+i]))
                         {
                             int color_number;
@@ -226,8 +237,10 @@ void Gpu::renderscan()
                                 color_number=((color1>>i)&1)+((color2>>i)&1)*2;
                             else 
                                 color_number=((color1>>(7-i))&1)+((color2>>(7-i))&1)*2;
+                            //get color from sprite palette
                             int color_real=cal_color((sprite_pal>>(2*color_number))&3);
                             
+                            //if color_number is 0,it is transparent
                             if (color_number!=0)
                             {
                                 sf::VertexArray quad(sf::Quads,4);
@@ -253,89 +266,75 @@ void Gpu::update_joypad()
     {
         if(event.type == sf::Event::Closed)
             gpu.window.close();
+        // key pressed
         if (event.type == sf::Event::KeyPressed)
         {
             if (event.key.code==sf::Keyboard::Right)
             {
-                //printf("press right\n");
                 mem.direction_state&=0xe;
             }
             if (event.key.code==sf::Keyboard::Left)
             {
-                //printf("press left\n");
                 mem.direction_state&=0xd;
             }
             if (event.key.code==sf::Keyboard::Up)
             {
-                //printf("press up\n");
                 mem.direction_state&=0xb;
             }
             if (event.key.code==sf::Keyboard::Down)
             {
-                //printf("press down\n");
                 mem.direction_state&=0x7;
             }
             if (event.key.code==sf::Keyboard::Z)
             {
-                //printf("press z\n");
                 mem.button_state&=0xe;
             }
             if (event.key.code==sf::Keyboard::X)
             {
-                //printf("press x\n");
                 mem.button_state&=0xd;
             }
             if (event.key.code==sf::Keyboard::Space)
             {
-                //printf("press space\n");
                 mem.button_state&=0xb;
             }
             if (event.key.code==sf::Keyboard::Return)
             {
-                //printf("press return\n");
                 mem.button_state&=0x7;
             }
         }
+        //key released
         if (event.type == sf::Event::KeyReleased)
         {
             if (event.key.code==sf::Keyboard::Right)
             {
-                //printf("release right\n");
                 mem.direction_state|=0x1;
             }
             if (event.key.code==sf::Keyboard::Left)
             {
-                //printf("release left\n");
                 mem.direction_state|=0x2;
             }
             if (event.key.code==sf::Keyboard::Up)
             {
-                //printf("release up\n");
                 mem.direction_state|=0x4;
             }
             if (event.key.code==sf::Keyboard::Down)
             {
-                //printf("release down\n");
                 mem.direction_state|=0x8;
             }
             if (event.key.code==sf::Keyboard::Z)
             {
-                //printf("release z\n");
                 mem.button_state|=0x1;
             }
             if (event.key.code==sf::Keyboard::X)
             {
-                //printf("release x\n");
                 mem.button_state|=0x2;
             }
             if (event.key.code==sf::Keyboard::Space)
             {
-                //printf("release space\n");
                 mem.button_state|=0x4;
             }
             if (event.key.code==sf::Keyboard::Return)
             {
-                //printf("release return\n");
                 mem.button_state|=0x8;
             }
         }

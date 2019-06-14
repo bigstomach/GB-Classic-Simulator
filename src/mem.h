@@ -7,12 +7,9 @@ class Mem
 {
 public:
     unsign_8 cartridge_memory[0x200000];
+    unsign_8 mmu[0x10000];
     bool memory_bank_controller_1;
     bool memory_bank_controller_2;
-    unsign_8 current_rom_bank;
-    unsign_8 current_ram_bank;
-    unsign_8 ram_banks[0x8000];  
-    unsign_8 mmu[0x10000];
     unsign_8 rb(unsign_16 address);
     unsign_16 rw(unsign_16 address);
     void wb(unsign_16 address, unsign_8 n);
@@ -38,6 +35,9 @@ private:
         0x21, 0x04, 0x01, 0x11, 0xA8, 0x00, 0x1A, 0x13, 0xBE, 0x00, 0x00, 0x23, 0x7D, 0xFE, 0x34, 0x20,
         0xF5, 0x06, 0x19, 0x78, 0x86, 0x23, 0x05, 0x20, 0xFB, 0x86, 0x00, 0x00, 0x3E, 0x01, 0xE0, 0x50
         };
+    unsign_8 current_rom_bank;
+    unsign_8 current_ram_bank;
+    unsign_8 ram_banks[0x8000]; 
     bool enable_ram;
     bool inbios;
     bool ram_mode;

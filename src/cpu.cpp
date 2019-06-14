@@ -76,8 +76,8 @@ void Cpu::add(unsign_8 n)
 {
     zero_flag(unsign_8(reg_a+n)==0);
     subtract_flag(0); 
-    half_carry_flag((reg_a&0xf)+(n&0xf)>15); 
-    carry_flag(reg_a+n>255); 
+    half_carry_flag((reg_a&0xf)+(n&0xf)>0xf); 
+    carry_flag(reg_a+n>0xff); 
     reg_a+=n; 
     _time=4;
 }
@@ -87,8 +87,8 @@ void Cpu::adc(unsign_8 n)
     unsign_8 cf=(reg_f&0x10)?1:0,value=reg_a+n+cf; 
     zero_flag(!value); 
     subtract_flag(0); 
-    half_carry_flag((reg_a&0xf)+(n&0xf)+(cf&0xf)>15); 
-    carry_flag(reg_a+n+cf>255); 
+    half_carry_flag((reg_a&0xf)+(n&0xf)+(cf&0xf)>0xf); 
+    carry_flag(reg_a+n+cf>0xff); 
     reg_a=value; 
     _time=4;
 }
@@ -175,9 +175,9 @@ void Cpu::add_hl(unsign_16 n)
 {
     unsign_16 tmp=(reg_h<<8)+reg_l;
     subtract_flag(0);
-    half_carry_flag((0xfff&n)+(0xfff&tmp)>4095);
-    carry_flag(n+tmp>65535);
-    reg_l=(n+tmp)&255;
+    half_carry_flag((0xfff&n)+(0xfff&tmp)>0xfff);
+    carry_flag(n+tmp>0xffff);
+    reg_l=(n+tmp)&0xff;
     reg_h=(n+tmp)>>8;
     _time=8;
 }
@@ -327,12 +327,12 @@ void Cpu::ret()
 
 unsign_8 Cpu::readhl()
 {
-    return mem.rb(unsign_16(reg_h<<8)+reg_l);
+    return mem.rb((static_cast<unsign_16>(reg_h)<<8)+reg_l);
 }
 
 void Cpu::writehl(unsign_8 n)
 {
-    mem.wb(unsign_16(reg_h<<8)+reg_l,n);
+    mem.wb((static_cast<unsign_16>(reg_h)<<8)+reg_l,n);
 }
 
 void Cpu::init()
@@ -417,7 +417,7 @@ void Cpu::init()
     //LD A,n
     opcode[0x0a]=[&]{reg_a=mem.rb((reg_b<<8)+reg_c); _time=8;};
     opcode[0x1a]=[&]{reg_a=mem.rb((reg_d<<8)+reg_e); _time=8;};
-    opcode[0xfa]=[&]{reg_a=mem.rb(mem.rw(reg_pc)); /*printf("check%x\n",mem.rw(reg_pc))*/;reg_pc+=2; _time=16;};
+    opcode[0xfa]=[&]{reg_a=mem.rb(mem.rw(reg_pc));reg_pc+=2; _time=16;};
     opcode[0x3e]=[&]{reg_a=mem.rb(reg_pc); reg_pc++; _time=8;};
 
     //LD n,A
@@ -427,9 +427,9 @@ void Cpu::init()
     opcode[0x5f]=[&]{reg_e=reg_a; _time=4;};
     opcode[0x67]=[&]{reg_h=reg_a; _time=4;};
     opcode[0x6f]=[&]{reg_l=reg_a; _time=4;};
-    opcode[0x02]=[&]{mem.wb(unsign_16(reg_b<<8)+reg_c,reg_a); _time=8;};
-    opcode[0x12]=[&]{mem.wb(unsign_16(reg_d<<8)+reg_e,reg_a); _time=8;};
-    opcode[0x77]=[&]{mem.wb(unsign_16(reg_h<<8)+reg_l,reg_a); _time=8;};
+    opcode[0x02]=[&]{mem.wb((static_cast<unsign_16>(reg_b)<<8)+reg_c,reg_a); _time=8;};
+    opcode[0x12]=[&]{mem.wb((static_cast<unsign_16>(reg_d)<<8)+reg_e,reg_a); _time=8;};
+    opcode[0x77]=[&]{mem.wb((static_cast<unsign_16>(reg_h)<<8)+reg_l,reg_a); _time=8;};
     opcode[0xea]=[&]{mem.wb(mem.rw(reg_pc),reg_a); reg_pc+=2; _time=16;};
 
     //LD A,(C)
@@ -454,7 +454,7 @@ void Cpu::init()
     opcode[0xe0]=[&]{mem.wb(0xff00+mem.rb(reg_pc),reg_a); reg_pc++; _time=12;};
 
     //LDH A,(n)
-    opcode[0xf0]=[&]{reg_a=mem.rb(0xff00+mem.rb(reg_pc));/*printf("address %x\n",mem.rb(reg_pc)+0xff00); */reg_pc++; _time=12;};
+    opcode[0xf0]=[&]{reg_a=mem.rb(0xff00+mem.rb(reg_pc)); reg_pc++; _time=12;};
     
 
 
@@ -467,15 +467,15 @@ void Cpu::init()
     opcode[0x31]=[&]{reg_sp=mem.rw(reg_pc); reg_pc+=2; _time=12;};
 
     //LD SP,HL
-    opcode[0xf9]=[&]{reg_sp=unsign_16(reg_h<<8)+reg_l; _time=8;};
+    opcode[0xf9]=[&]{reg_sp=static_cast<unsign_16>(reg_h<<8)+reg_l; _time=8;};
 
     //LDHL SP,n
     opcode[0xf8]=[&]{
-    sign_8 n=sign_8(mem.rb(reg_pc)); 
+    sign_8 n=static_cast<sign_8>(mem.rb(reg_pc)); 
     reg_pc++; 
     unsign_16 value=n+reg_sp; 
     reg_h=(value>>8); 
-    reg_l=value&255;
+    reg_l=value&0xff;
     zero_flag(0); 
     subtract_flag(0); 
     half_carry_flag(((n^reg_sp^(value&0xffff))&0x10)==0x10); 
@@ -509,7 +509,7 @@ void Cpu::init()
     opcode[0x83]=[&]{add(reg_e);};
     opcode[0x84]=[&]{add(reg_h);};
     opcode[0x85]=[&]{add(reg_l);};
-    opcode[0x86]=[&]{unsign_8 value=readhl();/* printf("readhl %x\n",value);*/ add(value); _time=8;};
+    opcode[0x86]=[&]{unsign_8 value=readhl(); add(value); _time=8;};
     opcode[0xc6]=[&]{unsign_8 value=mem.rb(reg_pc); reg_pc++; add(value); _time=8;};
 
     //ADC A,n
@@ -611,16 +611,16 @@ void Cpu::init()
 
     //16-bit Arithmetic
     //ADD HL,n
-    opcode[0x09]=[&]{unsign_16 bc=unsign_16(reg_b<<8)+reg_c; add_hl(bc);}; 
-    opcode[0x19]=[&]{unsign_16 de=unsign_16(reg_d<<8)+reg_e; add_hl(de);}; 
-    opcode[0x29]=[&]{unsign_16 hl=unsign_16(reg_h<<8)+reg_l; add_hl(hl);}; 
+    opcode[0x09]=[&]{unsign_16 bc=(static_cast<unsign_16>(reg_b)<<8)+reg_c; add_hl(bc);}; 
+    opcode[0x19]=[&]{unsign_16 de=(static_cast<unsign_16>(reg_d)<<8)+reg_e; add_hl(de);}; 
+    opcode[0x29]=[&]{unsign_16 hl=(static_cast<unsign_16>(reg_h)<<8)+reg_l; add_hl(hl);}; 
     opcode[0x39]=[&]{unsign_16 sp=reg_sp; add_hl(sp);};
 
     //ADD SP,n
     opcode[0xe8]=[&]{
-        sign_8 tmp=sign_8(mem.rb(reg_pc)); 
+        sign_8 tmp=static_cast<sign_8>(mem.rb(reg_pc)); 
         reg_pc++; 
-        int result=(int)reg_sp+tmp;
+        int result=static_cast<int>(reg_sp)+tmp;
         zero_flag(0);
         subtract_flag(0);
         half_carry_flag(((reg_sp^tmp^(result&0xffff))&0x10)==0x10);
@@ -650,7 +650,7 @@ void Cpu::init()
     cb_opcode[0x33]=[&]{swap_n(reg_e);};
     cb_opcode[0x34]=[&]{swap_n(reg_h);};
     cb_opcode[0x35]=[&]{swap_n(reg_l);};
-    cb_opcode[0x36]=[&]{unsign_8 tmp=readhl();swap_n(tmp);mem.wb((reg_h<<8)+reg_l,tmp);_time=16;};
+    cb_opcode[0x36]=[&]{unsign_8 tmp=readhl();swap_n(tmp);mem.wb(static_cast<unsign_16>(reg_h<<8)+reg_l,tmp);_time=16;};
 
     //DAA
     opcode[0x27]=[&]{
@@ -664,7 +664,7 @@ void Cpu::init()
         else reg_a+=tmp;
         zero_flag(reg_a==0);
         half_carry_flag(0);
-        carry_flag(((int)tmp<<2)&0x100);
+        carry_flag((static_cast<int>(tmp)<<2)&0x100);
         _time=4;
     };
 
@@ -821,10 +821,10 @@ void Cpu::init()
     opcode[0xc3]=[&]{jp();};
 
     //JP cc,nn
-    opcode[0xc2]=[&]{if ((reg_f&128)==0) jp();else {reg_pc+=2;_time=12;}};
-    opcode[0xca]=[&]{if (reg_f&128) jp();else {reg_pc+=2;_time=12;}};
-    opcode[0xd2]=[&]{if ((reg_f&16)==0) jp();else {reg_pc+=2;_time=12;}};
-    opcode[0xda]=[&]{if (reg_f&16) jp();else {reg_pc+=2;_time=12;}};
+    opcode[0xc2]=[&]{if ((reg_f&128)==0) jp();else {reg_pc+=2; _time=12;}};
+    opcode[0xca]=[&]{if (reg_f&128)      jp();else {reg_pc+=2; _time=12;}};
+    opcode[0xd2]=[&]{if ((reg_f&16)==0)  jp();else {reg_pc+=2; _time=12;}};
+    opcode[0xda]=[&]{if (reg_f&16)       jp();else {reg_pc+=2; _time=12;}};
 
     //JP (hl)
     opcode[0xe9]=[&]{reg_pc=unsign_16(reg_h<<8)|reg_l; _time=4;};
@@ -834,9 +834,9 @@ void Cpu::init()
 
     //JR cc,n
     opcode[0x20]=[&]{if ((reg_f&128)==0) {jr(); _time=12;}else {reg_pc++; _time=8;}};
-    opcode[0x28]=[&]{if (reg_f&128) {jr(); _time=12;}else {reg_pc++;_time=8;}};
-    opcode[0x30]=[&]{if ((reg_f&16)==0) {jr();_time=12;}else {reg_pc++;_time=8;}};
-    opcode[0x38]=[&]{if (reg_f&16) {jr(); _time=12;}else {reg_pc++;_time=8;}};
+    opcode[0x28]=[&]{if (reg_f&128)      {jr(); _time=12;}else {reg_pc++; _time=8;}};
+    opcode[0x30]=[&]{if ((reg_f&16)==0)  {jr(); _time=12;}else {reg_pc++; _time=8;}};
+    opcode[0x38]=[&]{if (reg_f&16)       {jr(); _time=12;}else {reg_pc++; _time=8;}};
 
     //Calls
     //CALL nn
@@ -844,9 +844,9 @@ void Cpu::init()
 
     //CALL cc,nn
     opcode[0xc4]=[&]{if ((reg_f&128)==0) {call(); _time=24;}else {reg_pc+=2; _time=12;}};
-    opcode[0xcc]=[&]{if (reg_f&128) {call();_time=24;}else {reg_pc+=2;_time=12;}};
-    opcode[0xd4]=[&]{if ((reg_f&16)==0) {call(); _time=24;}else {reg_pc+=2;_time=12;}};
-    opcode[0xdc]=[&]{if (reg_f&16) {call(); _time=24;}else {reg_pc+=2;_time=12;}};
+    opcode[0xcc]=[&]{if (reg_f&128)      {call(); _time=24;}else {reg_pc+=2; _time=12;}};
+    opcode[0xd4]=[&]{if ((reg_f&16)==0)  {call(); _time=24;}else {reg_pc+=2; _time=12;}};
+    opcode[0xdc]=[&]{if (reg_f&16)       {call(); _time=24;}else {reg_pc+=2 ;_time=12;}};
 
     //Restarts
     //RST n
@@ -864,10 +864,10 @@ void Cpu::init()
     opcode[0xc9]=[&]{ret();};
 
     //RET cc
-    opcode[0xc0]=[&]{if ((reg_f&128)==0) {ret();_time=20;} else _time=8;};
-    opcode[0xc8]=[&]{if (reg_f&128) {ret(); _time=20;} else _time=8;};
-    opcode[0xd0]=[&]{if ((reg_f&16)==0) {ret();_time=20;} else _time=8;};
-    opcode[0xd8]=[&]{if (reg_f&16) {ret(); _time=20;}else _time=8;};
+    opcode[0xc0]=[&]{if ((reg_f&128)==0) {ret(); _time=20;} else _time=8;};
+    opcode[0xc8]=[&]{if (reg_f&128)      {ret(); _time=20;} else _time=8;};
+    opcode[0xd0]=[&]{if ((reg_f&16)==0)  {ret(); _time=20;} else _time=8;};
+    opcode[0xd8]=[&]{if (reg_f&16)       {ret(); _time=20;} else _time=8;};
 
     //RETI
     opcode[0xd9]=[&]{ret(); master_enable=1; _time=16;};
