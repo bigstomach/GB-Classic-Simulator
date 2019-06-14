@@ -23,6 +23,7 @@ void Mem::init()
     button_state=0xf;
     enable_ram=0;
     ram_mode=1;
+    ram_over_rtc=1;
 }
 unsign_8 Mem::get_input()
 {
@@ -83,20 +84,27 @@ void Mem::do_ram_enable(unsign_16 address,unsign_8 n)
 {
     if (memory_bank_controller_2)
         if (address&0x10) return;
-    enable_ram=((n*0xf)==0xa)?1:0;
+    enable_ram=((n&0xf)==0xa)?1:0;
 }
 
 void Mem::do_rom_change_1(unsign_8 n)
 {
+    if (memory_bank_controller_1)
+    {
+        n&=0x1f;
+        if (!n) n=1;
+        current_rom_bank=(current_rom_bank&0x60)+n;
+    }
     if (memory_bank_controller_2)
     {
         current_rom_bank=n&0xf;
         if (!current_rom_bank) current_rom_bank++;
-        return ;
     }
-    n&=0x1f;
-    if (!n) n=1;
-    current_rom_bank=(current_rom_bank&0x60)+n;
+    if (memory_bank_controller_3)
+    {
+        n&=0x7f;
+        current_rom_bank=n;
+    }
 }
 
 void Mem::do_rom_change_2(unsign_8 n)
@@ -121,12 +129,12 @@ void Mem::deal_banking(unsign_16 address, unsign_8 n)
 {
     if(address<0x2000)
     {
-        if (memory_bank_controller_1||memory_bank_controller_2)
+        if (memory_bank_controller_1||memory_bank_controller_2||memory_bank_controller_3)
             do_ram_enable(address,n);
     }
     else if (address>=0x2000&&address<0x4000)
     {
-        if(memory_bank_controller_1||memory_bank_controller_2)
+        if(memory_bank_controller_1||memory_bank_controller_2||memory_bank_controller_3)
             do_rom_change_1(n);
     }
     else if (address>=0x4000&&address<0x6000)
@@ -137,6 +145,18 @@ void Mem::deal_banking(unsign_16 address, unsign_8 n)
                 do_ram_change(n);      
             else 
                 do_rom_change_2(n);
+        }
+        if (memory_bank_controller_3)
+        {
+            if (n>=0x0&&n<=0x3)
+            {
+                ram_over_rtc=1;
+                current_ram_bank=n;
+            }
+            if (n>=0x8&&n<=0xc)
+            {
+                ram_over_rtc=0;
+            }
         }
     }
     else if (address>=0x6000&&address<0x8000)
@@ -158,16 +178,20 @@ void Mem::dma_transfer(unsign_8 n)
 
 void Mem::wb(unsign_16 address, unsign_8 n)
 {
+    //printf("writebyte %x %x\n",address,n);
     if (address<0x8000)
     {
         deal_banking(address,n);
     }
     else if (address>=0xa000&&address<0xc000)
     {
-        if (!enable_ram)
+        if (enable_ram)
         {
-            unsign_16 tmp_address=address-0xa000;
-            ram_banks[tmp_address+(current_ram_bank*0x2000)]=n;
+            if (ram_over_rtc)
+            {   
+                unsign_16 tmp_address=address-0xa000;
+                ram_banks[tmp_address+(current_ram_bank*0x2000)]=n;
+            }
         }
     }
     else if (address>=0xe000&&address<0xfe00) 

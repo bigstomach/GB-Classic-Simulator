@@ -10,6 +10,7 @@ public:
     unsign_8 mmu[0x10000];
     bool memory_bank_controller_1;
     bool memory_bank_controller_2;
+    bool memory_bank_controller_3;
     unsign_8 rb(unsign_16 address);
     unsign_16 rw(unsign_16 address);
     void wb(unsign_16 address, unsign_8 n);
@@ -41,6 +42,7 @@ private:
     unsign_8 current_rom_bank;
     unsign_8 current_ram_bank;
     unsign_8 ram_banks[0x8000]; 
+    bool ram_over_rtc;
     bool enable_ram;
     bool inbios;
     bool ram_mode;
