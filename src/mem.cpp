@@ -167,7 +167,6 @@ void Mem::deal_banking(unsign_16 address, unsign_8 n)
 
 }
 
-
 void Mem::dma_transfer(unsign_8 n)
 {
     unsign_16 address=unsign_16(n)<<8;
@@ -175,10 +174,8 @@ void Mem::dma_transfer(unsign_8 n)
         wb(0xfe00+i,rb(address+i));
 }
 
-
 void Mem::wb(unsign_16 address, unsign_8 n)
 {
-    //printf("writebyte %x %x\n",address,n);
     if (address<0x8000)
     {
         deal_banking(address,n);

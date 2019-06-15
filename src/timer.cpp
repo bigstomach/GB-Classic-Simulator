@@ -26,7 +26,7 @@ void Timer::add()
         div_inc++;// 1/256 clock step
         if (div_inc==16)
         {
-            mem.mmu[0xff04]++; //TODO
+            mem.wb(0xff04,mem.rb(0xff04)+1);
             div_inc=0;
         }
     }
@@ -42,11 +42,11 @@ void Timer::add()
         if (time_1_16_step>=threshold) 
         {
             time_1_16_step=0;
-            mem.mmu[0xff05]++;
+            mem.wb(0xff05,mem.rb(0xff05)+1);
             if (mem.rb(0xff05)==0)
             {
-                mem.mmu[0xff05]=mem.rb(0xff06);
-                mem.mmu[0xff0f]=mem.rb(0xff0f)|4;
+                mem.wb(0xff05,mem.rb(0xff06));
+                mem.wb(0xff0f,mem.rb(0xff0f)|4);
             }
         } 
     } 
