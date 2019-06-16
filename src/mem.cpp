@@ -2,7 +2,6 @@
 #include "type.h"
 #include "cpu.h"
 #include <cstring>
-#include <cstdio>
 
 Mem mem;
 extern Cpu cpu;

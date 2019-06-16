@@ -2,7 +2,6 @@
 #include "cpu.h"
 #include "gpu.h"
 #include "type.h"
-#include <cstdio>
 
 Gpu gpu;
 extern Mem mem;
@@ -55,8 +54,9 @@ void Gpu::timing()
                     mem.mmu[0xff0f]|=0x2;
             
                 if (ly_crash)
-                mem.mmu[0xff41]|=0x4;
-                else mem.mmu[0xff41]&=0xfb;
+                    mem.mmu[0xff41]|=0x4;
+                else
+                    mem.mmu[0xff41]&=0xfb;
                 mem.mmu[0xff41]&=0xfd;
                 mem.mmu[0xff41]&=0xfe;    
             }
