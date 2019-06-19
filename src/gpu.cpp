@@ -23,7 +23,7 @@ void Gpu::init()
 //GPU frame timings
 void Gpu::timing()
 {
-    gpu_clock+=cpu._time/4;
+    gpu_clock+=cpu._time;
     int a=gpu_clock,b=gpu_mode,c=gpu_line;
     switch (gpu_mode)
     {

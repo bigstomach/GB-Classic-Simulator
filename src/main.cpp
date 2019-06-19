@@ -77,13 +77,13 @@ void execute()
     while(gpu.window.isOpen())
     {      
         do_interrupt();
-        execute_opcode();
-        gpu.timing();  
-        timer.add();     
         if (cpu._time) 
         {   
             timer.add();   
         }
+        execute_opcode();
+        gpu.timing();  
+        timer.add();       
     }
 }
 

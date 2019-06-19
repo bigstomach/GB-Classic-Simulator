@@ -45,13 +45,13 @@ $ ./run PATH_TO_ROM_FILE
 - [x] 支持载入ROM
 - [x] 可以玩数款GB游戏
 - [x] 游戏存档
+- [x] 声音
 
 ### TODOs：
 
-- [ ] 声音模拟(Doing)
 - [ ] 支持MBC5 HuC1
 - [ ] 金手指
-- [ ] 没有通过[Blargg's instruction timing test #4](http://gbdev.gg8.se/files/roms/blargg-gb-tests/)
+- [ ] Timer可能有bug
 
 ## Screenshot
 Menu | Gameplay
