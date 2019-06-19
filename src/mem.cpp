@@ -1,10 +1,10 @@
 #include "mem.h"
 #include "type.h"
-#include "cpu.h"
+#include "sound.h"
 #include <cstring>
 
 Mem mem;
-extern Cpu cpu;
+extern Sounds sounds;
 
 void Mem::init()
 {
@@ -67,10 +67,10 @@ unsign_8 Mem::rb(unsign_16 address)
     {
         return get_input();
     }
-    else if (address>=0xff10&&address<=0xff26)
+    /* else if (address>=0xff10&&address<=0xff26)
     {
         return 0xff;
-    }
+    }*/
     return mmu[address];
 }
 
@@ -203,6 +203,11 @@ void Mem::wb(unsign_16 address, unsign_8 n)
    {
        direction_switch=!(n&0x10);
        button_switch=!(n&0x20);
+   }
+   else if (address>=0xff10&&address<=0xff3f)
+   {
+       mmu[address]=n;
+       sounds.deal(address,n);
    }
    else mmu[address]=n;
    if (address==0xff44) mmu[address]=0;

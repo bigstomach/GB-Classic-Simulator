@@ -8,10 +8,12 @@
 #include "gpu.h"
 #include "timer.h"
 #include "type.h"
+#include "sound.h"
 
 extern Cpu cpu;
 extern Mem mem;
 extern Gpu gpu;
+extern Sounds sounds;
 extern Timer timer;
 int cas=1;
 FILE *in;
@@ -22,6 +24,7 @@ void init()
     mem.init();   
     gpu.init();  
     timer.init(); 
+    sounds.init();
 }
 
 void execute_opcode()
