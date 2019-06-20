@@ -22,6 +22,16 @@ $ make
 $ ./run PATH_TO_ROM_FILE
 ```
 
+## Release
+
+Release[地址](https://github.com/bigstomach/GB-Classic-Simulator/releases)，注意区分系统。
+对于MacOS和Ubuntu，需要先装SFML
+```sh
+brew install sfml # macos
+apt install libsfml-dev # ubuntu
+```
+对于windows，动态链接库全都已经打包，直接运行即可。
+
 ## Keyboard Map
 
 | Keyboard | Gameboy |
